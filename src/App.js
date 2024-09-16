@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Box, IconButton, Drawer, List, ListItem, ListItemText } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import './App.css';
 
 function App() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -13,17 +14,23 @@ function App() {
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
       <Typography variant="h6" sx={{ my: 2 }}>
-        Insight Page
+        ShopLINK
       </Typography>
       <List>
-        <ListItem button component={Link} to="/dashboard/overview">
-          <ListItemText primary="WhatsApp Interface" />
+        <ListItem button component={Link} to="/dashboard">
+          <ListItemText primary="Dashboard" />
         </ListItem>
-        <ListItem button component={Link} to="/dashboard/insights">
-          <ListItemText primary="Customer Insights" />
+        <ListItem button component={Link} to="/analytics">
+          <ListItemText primary="Analytics" />
         </ListItem>
-        <ListItem button component={Link} to="/">
-          <ListItemText primary="Logout" />
+        <ListItem button component={Link} to="/customer-management">
+          <ListItemText primary="Customer Management" />
+        </ListItem>
+        <ListItem button component={Link} to="/product-catalog">
+          <ListItemText primary="Product Catalog" />
+        </ListItem>
+        <ListItem button component={Link} to="/broadcast">
+          <ListItemText primary="Broadcast" />
         </ListItem>
       </List>
     </Box>
@@ -46,9 +53,12 @@ function App() {
             ShopLINK
           </Typography>
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-            <Button color="inherit" component={Link} to="/dashboard/overview">Messages</Button>
-            <Button color="inherit" component={Link} to="/dashboard/insights">Customer Insights</Button>
-            <Button color="inherit" component={Link} to="/">Logout</Button>
+            <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
+            <Button color="inherit" component={Link} to="/analytics">Analytics</Button>
+            <Button color="inherit" component={Link} to="/customer-management">Customer Management</Button>
+            <Button color="inherit" component={Link} to="/product-catalog">Product Catalog</Button>
+            <Button color="inherit" component={Link} to="/broadcast">Broadcast</Button>
+            <Button color="inherit" component={Link} to="/login">Logout</Button>
           </Box>
         </Toolbar>
       </AppBar>

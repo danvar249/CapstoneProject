@@ -3,95 +3,117 @@ import { Typography, Paper, TextField, Button, List, ListItem, IconButton, Box }
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
-const initialProducts = [
-  { id: 1, name: 'Smartphone X', category: 'smartphone', price: 999 },
-  { id: 2, name: 'Laptop Y', category: 'laptop', price: 1299 },
-  { id: 3, name: 'Wireless Headphones Z', category: 'accessories', price: 199 },
+const mockProducts = [
+  { id: 1, name: 'Smartphone X', price: '$999', tags: ['smartphone', 'electronics'] },
+  { id: 2, name: 'Laptop Pro', price: '$1,299', tags: ['laptop', 'computers'] },
+  { id: 3, name: 'Wireless Headphones', price: '$199', tags: ['accessories', 'audio'] },
 ];
 
 function ProductCatalog() {
-  const [products, setProducts] = useState(initialProducts);
-  const [newProduct, setNewProduct] = useState({ name: '', category: '', price: '' });
-  const [editProduct, setEditProduct] = useState(null);
+  const [products, setProducts] = useState(mockProducts);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [newName, setNewName] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [newTags, setNewTags] = useState('');
 
-  const handleAddProduct = () => {
-    if (editProduct) {
-      setProducts(products.map((product) => (product.id === editProduct.id ? { ...editProduct } : product)));
-      setEditProduct(null);
+  const handleEditProduct = (product) => {
+    setSelectedProduct(product);
+    setNewName(product.name);
+    setNewPrice(product.price);
+    setNewTags(product.tags.join(', '));
+  };
+
+  const handleSaveProduct = () => {
+    if (selectedProduct) {
+      const updatedProducts = products.map((product) =>
+        product.id === selectedProduct.id
+          ? { ...product, name: newName, price: newPrice, tags: newTags.split(',').map(tag => tag.trim()) }
+          : product
+      );
+      setProducts(updatedProducts);
+      setSelectedProduct(null);
+      setNewName('');
+      setNewPrice('');
+      setNewTags('');
+      alert('Product updated successfully!');
     } else {
-      const newProductObj = {
+      const newProduct = {
         id: products.length + 1,
-        ...newProduct,
-        price: parseFloat(newProduct.price),
+        name: newName,
+        price: newPrice,
+        tags: newTags.split(',').map(tag => tag.trim()),
       };
-      setProducts([...products, newProductObj]);
+      setProducts([...products, newProduct]);
+      setNewName('');
+      setNewPrice('');
+      setNewTags('');
+      alert('Product added successfully!');
     }
-    setNewProduct({ name: '', category: '', price: '' });
   };
 
   const handleDeleteProduct = (id) => {
-    setProducts(products.filter((product) => product.id !== id));
-  };
-
-  const handleEditProduct = (product) => {
-    setEditProduct(product);
-    setNewProduct(product);
+    setProducts(products.filter(product => product.id !== id));
+    if (selectedProduct && selectedProduct.id === id) {
+      setSelectedProduct(null);
+      setNewName('');
+      setNewPrice('');
+      setNewTags('');
+    }
   };
 
   return (
-    <div>
-      <Typography variant="h4" gutterBottom>Product Catalog</Typography>
-      <Paper sx={{ padding: 3, marginBottom: 3 }}>
-        <Typography variant="h6" gutterBottom>{editProduct ? 'Edit Product' : 'Add New Product'}</Typography>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+      <Box sx={{ width: '100%', maxWidth: '600px' }}>
+        <Typography variant="h4" gutterBottom>Product Catalog</Typography>
+        <Paper sx={{ padding: 3, marginBottom: 3 }}>
+          <Typography variant="h6" gutterBottom>Current Products</Typography>
+          <List>
+            {products.map((product) => (
+              <ListItem key={product.id} sx={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ flexGrow: 1 }}>
+                  <Typography variant="body1"><strong>Name:</strong> {product.name}</Typography>
+                  <Typography variant="body1"><strong>Price:</strong> {product.price}</Typography>
+                  <Typography variant="body1"><strong>Tags:</strong> {product.tags.join(', ')}</Typography>
+                </div>
+                <IconButton onClick={() => handleEditProduct(product)} color="primary" sx={{ mr: 1 }}>
+                  <EditIcon />
+                </IconButton>
+                <IconButton onClick={() => handleDeleteProduct(product.id)} color="secondary">
+                  <DeleteIcon />
+                </IconButton>
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+        <Paper sx={{ padding: 3 }}>
+          <Typography variant="h6" gutterBottom>{selectedProduct ? 'Edit Product' : 'Add New Product'}</Typography>
           <TextField
             label="Product Name"
             fullWidth
-            value={newProduct.name}
-            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-            sx={{ flex: 1 }}
-          />
-          <TextField
-            label="Category"
-            fullWidth
-            value={newProduct.category}
-            onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-            sx={{ flex: 1 }}
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            sx={{ marginBottom: 2 }}
           />
           <TextField
             label="Price"
             fullWidth
-            type="number"
-            value={newProduct.price}
-            onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-            sx={{ flex: 1 }}
+            value={newPrice}
+            onChange={(e) => setNewPrice(e.target.value)}
+            sx={{ marginBottom: 2 }}
           />
-        </Box>
-        <Button variant="contained" color="primary" sx={{ marginTop: 2 }} onClick={handleAddProduct}>
-          {editProduct ? 'Update Product' : 'Add Product'}
-        </Button>
-      </Paper>
-      <Paper sx={{ padding: 3 }}>
-        <Typography variant="h6" gutterBottom>Product List</Typography>
-        <List>
-          {products.map((product) => (
-            <ListItem key={product.id}>
-              <Box sx={{ display: 'flex', flex: 1, justifyContent: 'space-between' }}>
-                <Typography variant="body1">{product.name} - {product.category} - ${product.price.toFixed(2)}</Typography>
-                <Box>
-                  <IconButton onClick={() => handleEditProduct(product)} color="primary">
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton onClick={() => handleDeleteProduct(product.id)} color="secondary">
-                    <DeleteIcon />
-                  </IconButton>
-                </Box>
-              </Box>
-            </ListItem>
-          ))}
-        </List>
-      </Paper>
-    </div>
+          <TextField
+            label="Tags (comma separated)"
+            fullWidth
+            value={newTags}
+            onChange={(e) => setNewTags(e.target.value)}
+            sx={{ marginBottom: 2 }}
+          />
+          <Button variant="contained" color="primary" onClick={handleSaveProduct}>
+            {selectedProduct ? 'Save Changes' : 'Add Product'}
+          </Button>
+        </Paper>
+      </Box>
+    </Box>
   );
 }
 
