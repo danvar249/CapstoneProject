@@ -7,7 +7,7 @@ function Connect() {
 
   useEffect(() => {
     setTimeout(() => {
-      navigate('/dashboard/overview');
+      navigate('/dashboard');
     }, 2000); // Simulate a connection delay
   }, [navigate]);
 
