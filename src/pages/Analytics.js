@@ -2,39 +2,39 @@ import React, { useState } from 'react';
 import { Typography, Box, TextField, MenuItem, Grid, Tabs, Tab } from '@mui/material';
 import AnalyticsChart from '../components/AnalyticsChart';
 
-const tags = ['All', 'Promo', 'Feedback', 'Order', 'Support'];
+const mockTags = ['All','smartphone', 'electronics', 'laptop', 'computers', 'accessories', 'audio'];
 
 const engagementData = {
   messagesSent: [
-    { date: '2024-01-01', value: 120, tag: 'Promo' },
-    { date: '2024-01-02', value: 100, tag: 'Promo' },
-    { date: '2024-01-03', value: 110, tag: 'Promo' },
-    { date: '2024-01-04', value: 140, tag: 'Promo' },
-    { date: '2024-01-02', value: 150, tag: 'Feedback' },
-    { date: '2024-01-02', value: 140, tag: 'Feedback' },
-    { date: '2024-01-02', value: 15, tag: 'Feedback' },
-    { date: '2024-01-02', value: 123, tag: 'Feedback' },
-    { date: '2024-01-03', value: 130, tag: 'Order' },
-    { date: '2024-01-04', value: 200, tag: 'Support' },
+    { date: '2024-01-01', value: 120, tag: 'smartphone' },
+    { date: '2024-01-02', value: 100, tag: 'smartphone' },
+    { date: '2024-01-03', value: 110, tag: 'electronics' },
+    { date: '2024-01-04', value: 140, tag: 'electronics' },
+    { date: '2024-01-02', value: 150, tag: 'computers' },
+    { date: '2024-01-02', value: 140, tag: 'computers' },
+    { date: '2024-01-02', value: 15, tag: 'computers' },
+    { date: '2024-01-02', value: 123, tag: 'computers' },
+    { date: '2024-01-03', value: 130, tag: 'audio' },
+    { date: '2024-01-04', value: 200, tag: 'accessories' },
   ],
   responseRate: [
-    { date: '2024-01-01', value: 75, tag: 'Promo' },
-    { date: '2024-01-01', value: 120, tag: 'Promo' },
-    { date: '2024-01-02', value: 100, tag: 'Feedback' },
-    { date: '2024-01-03', value: 85, tag: 'Promo' },
-    { date: '2024-01-04', value: 140, tag: 'Feedback' },
-    { date: '2024-01-02', value: 80, tag: 'Feedback' },
-    { date: '2024-01-03', value: 70, tag: 'Order' },
-    { date: '2024-01-04', value: 85, tag: 'Support' },
+    { date: '2024-01-01', value: 75, tag: 'electronics' },
+    { date: '2024-01-01', value: 120, tag: 'electronics' },
+    { date: '2024-01-02', value: 100, tag: 'computers' },
+    { date: '2024-01-03', value: 85, tag: 'electronics' },
+    { date: '2024-01-04', value: 140, tag: 'computers' },
+    { date: '2024-01-02', value: 80, tag: 'computers' },
+    { date: '2024-01-03', value: 70, tag: 'audio' },
+    { date: '2024-01-04', value: 85, tag: 'accessories' },
   ],
   averageResponseTime: [
-    { date: '2024-01-01', value: 2.5, tag: 'Promo' },
-    { date: '2024-01-02', value: 3.0, tag: 'Feedback' },
-    { date: '2024-01-02', value: 4.0, tag: 'Feedback' },
-    { date: '2024-01-02', value: 1.1, tag: 'Feedback' },
-    { date: '2024-01-02', value: 2.4, tag: 'Feedback' },
-    { date: '2024-01-03', value: 2.2, tag: 'Order' },
-    { date: '2024-01-04', value: 2.8, tag: 'Support' },
+    { date: '2024-01-01', value: 2.5, tag: 'electronics' },
+    { date: '2024-01-02', value: 3.0, tag: 'computers' },
+    { date: '2024-01-02', value: 4.0, tag: 'computers' },
+    { date: '2024-01-02', value: 1.1, tag: 'computers' },
+    { date: '2024-01-02', value: 2.4, tag: 'computers' },
+    { date: '2024-01-03', value: 2.2, tag: 'audio' },
+    { date: '2024-01-04', value: 2.8, tag: 'accessories' },
   ],
   popularTimes: [
     { time: 'Morning', value: 410 },
@@ -80,7 +80,7 @@ function Analytics() {
     });
 
     return Object.entries(tagEngagement)
-      .sort(([, a], [, b]) => a - b) // Sort by total engagement in ascending order
+      .sort(([, a], [, b]) => a - b) // Sort by total engagement in ascending audio
       .map(([tag, totalEngagement]) => ({ tag, totalEngagement }));
   };
 
