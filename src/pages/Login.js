@@ -1,11 +1,15 @@
 import React from 'react';
 import { Container, Typography, TextField, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { sendWhatsAppMessage } from './whatsapp.ts';
 
 function Login() {
   const navigate = useNavigate();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    console.log('sending')
+    await sendWhatsAppMessage('972585272419')
+    console.log('sent')
     navigate('/connect');
   };
 
