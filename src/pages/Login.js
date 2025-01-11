@@ -8,7 +8,6 @@ function Login() {
 
   const handleLogin = async () => {
     console.log('sending')
-    await sendWhatsAppMessage('972585272419')
     console.log('sent')
     navigate('/connect');
   };
