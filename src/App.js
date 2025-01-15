@@ -1,14 +1,32 @@
-import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Box, IconButton, Drawer, List, ListItem, ListItemText } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Box, IconButton, Drawer, List, ListItem, ListItemText, Container } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import './App.css';
+import logo from './logo.png'; // Importing the logo
 
 function App() {
-  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user'));
+    if (userData) {
+      setUser(userData);
+    } else {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    navigate('/login');
   };
 
   const drawer = (
@@ -32,13 +50,16 @@ function App() {
         <ListItem button component={Link} to="/broadcast">
           <ListItemText primary="Broadcast" />
         </ListItem>
+        <ListItem button onClick={handleLogout}>
+          <ListItemText primary="Logout" />
+        </ListItem>
       </List>
     </Box>
   );
 
   return (
     <div>
-      <AppBar position="static">
+      <AppBar position="fixed" sx={{ bgcolor: 'green' }}>
         <Toolbar>
           <IconButton
             color="inherit"
@@ -49,7 +70,8 @@ function App() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, display: { xs: 'none', sm: 'block' } }}>
+          <Box component="img" src={logo} alt="ShopLINK Logo" sx={{ width: 40, height: 40, mr: 2 }} />
+          <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 'bold', color: 'white' }}>
             ShopLINK
           </Typography>
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
@@ -58,7 +80,7 @@ function App() {
             <Button color="inherit" component={Link} to="/customer-management">Customer Management</Button>
             <Button color="inherit" component={Link} to="/product-catalog">Product Catalog</Button>
             <Button color="inherit" component={Link} to="/broadcast">Broadcast</Button>
-            <Button color="inherit" component={Link} to="/login">Logout</Button>
+            <Button color="inherit" onClick={handleLogout}>Logout</Button>
           </Box>
         </Toolbar>
       </AppBar>
@@ -78,6 +100,23 @@ function App() {
           {drawer}
         </Drawer>
       </Box>
+      <Container maxWidth="md" sx={{ mt: 10, textAlign: 'center' }}>
+        {location.pathname === '/' && (
+          <Box sx={{ mb: 4 }}>
+            <img
+              src={logo}
+              alt="ShopLINK Logo"
+              style={{ width: '512px', height: '512px', marginBottom: '16px' }}
+            />
+            <Typography variant="h3" sx={{ fontWeight: 'bold', color: 'green' }}>
+              Welcome to ShopLINK
+            </Typography>
+            <Typography variant="h6" color="text.secondary">
+              Your one-stop solution for business management.
+            </Typography>
+          </Box>
+        )}
+      </Container>
       <Box sx={{ p: 3 }}>
         <Outlet />
       </Box>
