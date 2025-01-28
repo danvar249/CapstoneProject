@@ -75,7 +75,7 @@ const AnalyticsChart = ({ data, type = 'line', title }) => {
   return (
     <Paper sx={{ padding: 2 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>{title}</Typography>
-      <Box sx={{ height: '300px' }}>
+      <Box>
         <ChartComponent data={chartData} options={options} />
       </Box>
     </Paper>

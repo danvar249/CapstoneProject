@@ -35,7 +35,7 @@ function Login() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center', boxShadow: 3, borderRadius: 2, p: 3, bgcolor: 'background.paper', width: { xs: '90%', sm: '75%', md: '50%' } }}>
+    <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center', boxShadow: 3, borderRadius: 2, p: 3, bgcolor: 'background.paper', width: { xs: '90%', sm: '75%', md: '50%' }}}>
       <Box sx={{ mb: 3 }}>
         <img src={logo} alt="ShopLINK Logo" style={{ width: '100px', height: 'auto' }} />
       </Box>
