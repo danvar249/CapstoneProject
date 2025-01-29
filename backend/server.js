@@ -1,6 +1,8 @@
 // Import required modules
 const express = require('express');
 const cors = require('cors');
+import { Server } from 'socket.io';
+
 const { getModel } = require('./mongo');
 const { Analytics,
   Broadcasts,
@@ -12,22 +14,35 @@ const { Analytics,
   Users, } = require('./mongo');
 
 // Import WhatsApp-related functionality
-const {
-  getAllContacts,
-  initializeClient,
-  getClientState,
-  getChats,
-  getMessagesForChat,
-  getEncodedQrCode,
-} = require('./whatsapp');
+const whatsapp = require('./whatsapp');
+
 
 // Initialize Express app
 const app = express();
-const PORT = 5000;
+
+// Start the server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+const io = new Server
+
+// Initialize WhatsApp client and pass `io` for WebSocket communication
+whatsapp.initializeClient(io);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// ✅ WebSockets - Handle Real-time Events
+io.on('connection', (socket) => {
+  console.log('🔌 New client connected');
+  
+  socket.on('disconnect', () => {
+      console.log('🔌 Client disconnected');
+  });
+});
 
 app.post('/login', async (req, res) => {
   const { userName, userPass } = req.body
@@ -134,7 +149,7 @@ app.get('/:collection', async (req, res) => {
 // Endpoint to check connection status
 app.get('/whatsapp/state', async (req, res) => {
   try {
-    const state = await getClientState();
+    const state = await whatsapp.getClientState();
     res.status(200).json({
       clientState: state,
     });
@@ -144,25 +159,10 @@ app.get('/whatsapp/state', async (req, res) => {
   }
 });
 
-// Endpoint to fetch QR code for WhatsApp login
-app.get('/whatsapp/qr', async (req, res) => {
-  try {
-    const encodedQr = await getEncodedQrCode();
-    if (encodedQr) {
-      res.status(200).json({ qr: encodedQr });
-    } else {
-      res.status(404).json({ error: 'QR code not available.' });
-    }
-  } catch (error) {
-    console.error('Error fetching encoded QR code:', error);
-    res.status(500).json({ error: 'Failed to generate QR code.' });
-  }
-});
-
 
 app.get('/whatsapp/chats', async (req, res) => {
   try {
-    const chats = await getChats();
+    const chats = await whatsapp.getChats();
     res.status(200).json(chats);
   } catch (error) {
     console.error('Error fetching chats:', error);
@@ -176,7 +176,7 @@ app.get('/whatsapp/chats/:chatId/messages', async (req, res) => {
   const messageLimit = parseInt(limit, 10) || 50;
 
   try {
-    const messages = await getMessagesForChat(chatId, messageLimit);
+    const messages = await whatsapp.getMessagesForChat(chatId, messageLimit);
     res.status(200).json(messages);
   } catch (error) {
     console.error(`Error fetching messages for chat ${chatId}:`, error);
@@ -189,12 +189,11 @@ app.get('/whatsapp/chats/:chatId/messages', async (req, res) => {
 app.post('/whatsapp/send-message', async (req, res) => {
   const { phoneNumber, message } = req.body;
   try {
-    await client.sendMessage(`${phoneNumber}@c.us`, message);
+    await whatsapp.sendMessage(`${phoneNumber}@c.us`, message);
     res.status(200).json({ success: true, message: 'Message sent successfully!' });
-  } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
+} catch (error) {
     res.status(500).json({ error: 'Failed to send message.' });
-  }
+}
 });
 
 // Endpoint to fetch all contacts
@@ -208,7 +207,8 @@ app.get('/whatsapp/contacts', async (req, res) => {
   }
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+// Endpoint to logout from WhatsApp
+app.post('/whatsapp/logout', async (req, res) => {
+  await whatsapp.logoutClient(req, res);
 });
+

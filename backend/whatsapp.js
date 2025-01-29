@@ -1,23 +1,19 @@
-const QRCode = require('qrcode');
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const EventEmitter = require('events');
+const qrcode = require('qrcode');
+
 const fs = require('fs');
 
-// Create an event emitter for QR code updates
-const qrEmitter = new EventEmitter();
-
-let qrCode = null; // Store QR code for login
 let client = null; // WhatsApp client instance
 
 // Initialize the WhatsApp client
-const initializeClient = () => {
+const initializeClient = (io) => {
     try {
         console.log('Initializing WhatsApp client...');
         client = new Client({
             authStrategy: new LocalAuth(),
         });
 
-        attachEventHandlers(client);
+        attachEventHandlers(client, io);
         client.initialize();
     } catch (err) {
         console.error('Error during client initialization:', err);
@@ -25,24 +21,30 @@ const initializeClient = () => {
 };
 
 // Attach event handlers to the client
-const attachEventHandlers = (client) => {
+const attachEventHandlers = (client, io) => {
     // QR Code generation for login
     client.on('qr', (qr) => {
-        console.log('QR code generated. Scan it to log in.');
-        qrCode = qr;
-        // qrEmitter.emit('qrUpdated', qr); // Notify listeners about the QR code update
-        // qrcode.generate(qr, { small: true }); // Log QR code to the console
+        console.log('New QR Code generated');
+        qrcode.toDataURL(qr, (err, url) => {
+            if (!err) {
+                io.emit('qrCode', url); // Send QR to all connected clients in real-time
+            }
+        });
     });
 
     // Client is ready
     client.on('ready', () => {
-        console.log('WhatsApp client is ready!');
+        console.log('WhatsApp is ready');
     });
 
     // Authentication successful
     client.on('authenticated', () => {
         console.log('WhatsApp client authenticated!');
-        qrCode = null; // Clear QR code as it's no longer needed
+    });
+
+    client.on('change_state', (newState) => {
+        console.log(`WhatsApp state changed: ${newState}`);
+        io.emit('WA_ClientState', { clientState: newState });
     });
 
     // Authentication failure
@@ -52,53 +54,30 @@ const attachEventHandlers = (client) => {
 
     // Client disconnected
     client.on('disconnected', async (reason) => {
-        console.error('WhatsApp client disconnected. Reason:', reason);
+        console.log(`WhatsApp Disconnected. Reason: ${reason}`);
 
         if (reason === 'LOGOUT') {
-            console.log('Client logged out. Attempting to clean up and reconnect...');
-            try {
-                await client.logout(); // Use logout for standard cleanup
-                console.log('Client logged out successfully.');
-            } catch (error) {
-                console.error('Error during logout:', error);
-                console.log('Falling back to destroy the client instance...');
-                await safeDestroyClient(); // Emergency cleanup
-            }
-
-            // Reinitialize after ensuring cleanup
-            setTimeout(() => {
-                console.log('Reinitializing WhatsApp client...');
-                initializeClient();
-            }, 5000); // Reinitialize after 5 seconds
+            console.log('User logged out. Restarting client...');
+            // await client.logout().catch(err => console.error('Error logging out:', err));
+            client = null;
+        } else {
+            console.log('Restarting WhatsApp client...');
         }
+
+        setTimeout(() => initializeWhatsApp(io), 5000);
     });
+
 
     // Handle incoming messages
     client.on('message', (message) => {
         console.log(`Message received from ${message.from}: ${message.body}`);
+        io.emit('incomingMessage', message);
     });
 
     // Handle client errors
     client.on('error', (error) => {
         console.error('An error occurred in WhatsApp client:', error);
     });
-
-    // Log all state changes
-    client.on('change_state', (state) => {
-        console.log('Client state changed to:', state);
-    });
-};
-
-const getEncodedQrCode = async () => {
-    if (!qrCode) return null; // If no QR code is available, return null
-    try {
-        // Generate QR code as a data URI (Base64-encoded PNG)
-        const dataUri = await QRCode.toDataURL(qrCode);
-        return dataUri; // Return encoded QR code
-    } catch (error) {
-        console.error('Error encoding QR code:', error);
-        return null;
-    }
 };
 
 
@@ -165,6 +144,16 @@ const getClientState = async () => {
     }
 };
 
+//Send message
+const sendMessage = async (phoneNumber, message) => {
+    try {
+        await whatsapp.client.sendMessage(`${phoneNumber}@c.us`, message);
+    } catch (error) {
+        console.error('Error sending WhatsApp message:', error);
+        throw error;
+    }
+};
+
 // Safely destroy the client instance (emergency only)
 const safeDestroyClient = async () => {
     try {
@@ -197,15 +186,27 @@ const restartClient = async () => {
     }
 };
 
-// Start the client
-initializeClient();
+const logoutClient = async (req, res) => {
+    try {
+        if (client) {
+            await client.logout();
+            res.status(200).json({ success: true, message: 'WhatsApp disconnected successfully' });
+        } else {
+            res.status(400).json({ error: 'Client is not initialized' });
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({ error: 'Failed to disconnect WhatsApp' });
+    }
+};
 
 // Export the required functionalities
 module.exports = {
-    getEncodedQrCode,
     getAllContacts,
     getChats,
     getMessagesForChat,
     initializeClient,
     getClientState,
+    logoutClient,
+    sendMessage,
 };
