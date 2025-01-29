@@ -1,6 +1,10 @@
 // Import required modules
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
+const { Server } = require('socket.io');
+const QRCode = require('qrcode');
+const path = require('path');
 const { getModel } = require('./mongo');
 const { Analytics,
   Broadcasts,
@@ -11,23 +15,85 @@ const { Analytics,
   Tags,
   Users, } = require('./mongo');
 
+
 // Import WhatsApp-related functionality
-const {
-  getAllContacts,
-  initializeClient,
-  getClientState,
-  getChats,
-  getMessagesForChat,
-  getEncodedQrCode,
-} = require('./whatsapp');
+const whatsapp = require('./whatsapp');
+
+const PORT = process.env.PORT || 5000;
 
 // Initialize Express app
 const app = express();
-const PORT = 5000;
+const server = http.createServer(app); //http server
 
-// Middleware
+// Initialize WebSocket server and attach it to the HTTP server
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  }
+});
+
+// Initialize WhatsApp client and pass `io` for WebSocket communication
+whatsapp.initializeClient(io);
+
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')))
+
+
+// ✅ Store latest QR code
+let latestQrCode = null;
+
+// ✅ Subscribe to WhatsApp QR Code Events and Emit to Clients
+whatsapp.getClient().on("qr", async (qr) => {
+  console.log("📡 New QR Code received from WhatsApp");
+  try {
+    latestQrCode = await QRCode.toDataURL(qr); // ✅ Convert to Data URI
+    io.emit("qrCode", latestQrCode);
+  } catch (error) {
+    console.error("❌ Error generating QR code:", error);
+  }
+});
+
+// ✅ Subscribe to WhatsApp State Changes and Emit to Clients
+whatsapp.getClient().on("change_state", (newState) => {
+  console.log(`📢 WhatsApp State Changed: ${newState}`);
+  io.emit("WA_ClientState", { clientState: newState });
+});
+
+// ✅ WebSockets - Handle Real-time Events
+io.on('connection', (socket) => {
+  console.log('🔌 New client connected');
+
+  // ✅ Send latest QR **only if requested**
+  socket.on("requestLatestQr", () => {
+    if (latestQrCode) {
+      console.log("📡 Sending stored QR code to client");
+      socket.emit("qrCode", latestQrCode);
+    }
+  });
+
+  socket.on("whatsappClientState", async () => {
+    const state = await whatsapp.getClient().getState();
+    console.log(state);
+    socket.emit("WA_ClientState", { clientState: state });
+  })
+
+  // Upon connection, send a welcome message
+  socket.emit('message', 'Welcome to ShopLINK!');
+
+  // Listen for activity 
+  socket.on('activity', (name) => {
+    socket.broadcast.emit('activity', name)
+  })
+
+  socket.on('disconnect', () => {
+    console.log('🔌 Client disconnected');
+  });
+});
+
+app.post('/', async (req, res) => {
+  res.status(200).send('Welcome to ShopLINK Server!');
+});
 
 app.post('/login', async (req, res) => {
   const { userName, userPass } = req.body
@@ -134,7 +200,7 @@ app.get('/:collection', async (req, res) => {
 // Endpoint to check connection status
 app.get('/whatsapp/state', async (req, res) => {
   try {
-    const state = await getClientState();
+    const state = await whatsapp.getClient().getState();
     res.status(200).json({
       clientState: state,
     });
@@ -144,25 +210,10 @@ app.get('/whatsapp/state', async (req, res) => {
   }
 });
 
-// Endpoint to fetch QR code for WhatsApp login
-app.get('/whatsapp/qr', async (req, res) => {
-  try {
-    const encodedQr = await getEncodedQrCode();
-    if (encodedQr) {
-      res.status(200).json({ qr: encodedQr });
-    } else {
-      res.status(404).json({ error: 'QR code not available.' });
-    }
-  } catch (error) {
-    console.error('Error fetching encoded QR code:', error);
-    res.status(500).json({ error: 'Failed to generate QR code.' });
-  }
-});
-
 
 app.get('/whatsapp/chats', async (req, res) => {
   try {
-    const chats = await getChats();
+    const chats = await whatsapp.getChats();
     res.status(200).json(chats);
   } catch (error) {
     console.error('Error fetching chats:', error);
@@ -176,7 +227,7 @@ app.get('/whatsapp/chats/:chatId/messages', async (req, res) => {
   const messageLimit = parseInt(limit, 10) || 50;
 
   try {
-    const messages = await getMessagesForChat(chatId, messageLimit);
+    const messages = await whatsapp.getMessagesForChat(chatId, messageLimit);
     res.status(200).json(messages);
   } catch (error) {
     console.error(`Error fetching messages for chat ${chatId}:`, error);
@@ -189,10 +240,9 @@ app.get('/whatsapp/chats/:chatId/messages', async (req, res) => {
 app.post('/whatsapp/send-message', async (req, res) => {
   const { phoneNumber, message } = req.body;
   try {
-    await client.sendMessage(`${phoneNumber}@c.us`, message);
+    await whatsapp.sendMessage(`${phoneNumber}@c.us`, message);
     res.status(200).json({ success: true, message: 'Message sent successfully!' });
   } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
     res.status(500).json({ error: 'Failed to send message.' });
   }
 });
@@ -200,7 +250,7 @@ app.post('/whatsapp/send-message', async (req, res) => {
 // Endpoint to fetch all contacts
 app.get('/whatsapp/contacts', async (req, res) => {
   try {
-    const contacts = await getAllContacts();
+    const contacts = await whatsapp.getAllContacts();
     res.status(200).json(contacts);
   } catch (error) {
     console.error('Error fetching contacts:', error);
@@ -208,7 +258,12 @@ app.get('/whatsapp/contacts', async (req, res) => {
   }
 });
 
+// Endpoint to logout from WhatsApp
+app.post('/whatsapp/logout', async (req, res) => {
+  await whatsapp.logoutClient(req, res);
+});
+
 // Start the server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
