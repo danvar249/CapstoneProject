@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Box} from '@mui/material';
-import logo from './logo.png'; // Importing the logo
+import React, { useState, useEffect } from "react";
+import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
+import { AppBar, Toolbar, Typography, Box, Snackbar, Alert, Button } from "@mui/material";
+const logo = require("./logo.png");
 
-function App() {
-  const [user, setUser] = useState(null);
+const App: React.FC = () => {
+  const [userData, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user'));
+    const userDataString = localStorage.getItem('user');
+    const userData = userDataString ? JSON.parse(userDataString) : null;
     if (userData) {
       setUser(userData);
     } else {
@@ -25,7 +26,7 @@ function App() {
 
   return (
     <Box>
-      <AppBar position="fixed"  sx={{ bgcolor: 'green' }}>
+      <AppBar position="fixed" sx={{ bgcolor: 'green' }}>
         <Toolbar>
           <Box component="img" src={logo} alt="ShopLINK Logo" sx={{ width: 40, height: 40, mr: 2 }} />
           <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 'bold', color: 'white' }}>
@@ -52,7 +53,7 @@ function App() {
           alignItems: 'center',
           bgcolor: '#f5f5f5',
           height: '98vh',
-          }}
+        }}
       >
         {location.pathname === '/' && (
           <Box sx={{ height: '80vh', textAlign: 'center', paddingTop: '10vh' }}>
