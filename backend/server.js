@@ -26,7 +26,11 @@ app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-const io = new Server
+const io = new Server(app, {
+  cors: {
+    origin: '*',
+  },
+});
 
 // Initialize WhatsApp client and pass `io` for WebSocket communication
 whatsapp.initializeClient(io);
