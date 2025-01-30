@@ -18,6 +18,7 @@ const { Analytics,
 
 // Import WhatsApp-related functionality
 const whatsapp = require('./whatsapp');
+const { classifyText } = require('./textClassifier');
 
 const PORT = process.env.PORT || 5000;
 
@@ -58,6 +59,11 @@ whatsapp.getClient().on("qr", async (qr) => {
 whatsapp.getClient().on("change_state", (newState) => {
   console.log(`📢 WhatsApp State Changed: ${newState}`);
   io.emit("WA_ClientState", { clientState: newState });
+});
+
+whatsapp.getClient().on("message", (message) => {
+  console.log(`Message received from ${message.from}: ${message.body}`);
+  io.emit('incomingMessage', message);
 });
 
 // ✅ WebSockets - Handle Real-time Events
@@ -114,11 +120,68 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
+// ✅ Endpoint to add a new customer
+app.post('/addCustomer', async (req, res) => {
+  const { userId, name, number, messages } = req.body;
 
-app.get('/customer/:id', async (req, res) => {
-  const { id } = req.params;
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId parameter.' });
+  }
+
+  if (!name || !number) {
+    return res.status(400).json({ error: "Name and phone number are required." });
+  }
+
   try {
-    const customer = await CustomerProfiles.findById(id);
+
+    // ✅ Create new customer
+    const customer = new CustomerProfiles({
+      name: name,
+      number: number,
+    });
+
+    const result = await customer.save();
+    console.log(`✅ New customer added: ${name} (${number})`);
+
+    const classifiedMsg = []
+
+    for(const msg of messages){
+      if(msg.fromMe)
+        continue;
+      const classification = await classifyText(msg.body)
+      if(classification !== 'Uncategorized'){
+        classifiedMsg.push(
+          {
+            text: msg.body,
+            timestamp: msg.timestamp,
+            classifications: classification.categories
+          }
+        )
+      }
+    }
+    const conversation = {
+      userId: userId,
+      customerId: result._id,
+      messages: classifiedMsg
+    };
+    // add customer conversation to db
+    conv = new Conversations(conversation)
+
+    await conv.save();
+    console.log(`✅ New conversation added: ${name} (${number})`);
+
+
+    res.status(200).json(customer);
+  } catch (error) {
+    console.error("❌ Error adding customer:", error);
+    res.status(500).json({ error: "Failed to add customer." });
+  }
+});
+
+app.get('/customer/:number', async (req, res) => {
+  const { number } = req.params;
+  try {
+    const customer = await CustomerProfiles.findOne({ number: number });
     if (!customer) {
       return res.status(404).json({ error: 'Customer not found' });
     }
@@ -129,52 +192,6 @@ app.get('/customer/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
-
-// app.get('/conversations', async (req, res) => {
-//   try {
-//     const conversations = await Conversations.aggregate([
-//       {
-//         $lookup: {
-//           from: 'customer_profiles',  // Collection to join
-//           localField: 'customer',    // Field in conversations collection
-//           foreignField: '_id',       // Field in customer_profiles collection
-//           as: 'customerDetails'      // Alias for the joined data
-//         }
-//       },
-//       {
-//         $unwind: '$customerDetails' // Flatten the customerDetails array
-//       },
-//       {
-//         $lookup: {
-//           from: 'tags',              // Collection to join
-//           localField: 'messages.tags', // Field in messages array
-//           foreignField: '_id',       // Field in tags collection
-//           as: 'resolvedTags'         // Alias for the resolved tags
-//         }
-//       },
-//       {
-//         $project: {
-//           _id: 1,
-//           messages: 1,
-//           'customerDetails.name': 1,
-//           'customerDetails.contact': 1,
-//           resolvedTags: 1            // Include resolved tag names
-//         }
-//       }
-//     ]);
-
-// Map resolved tag names into messages
-//     const enrichedConversations = conversations.map(conversation => ({
-//       ...conversation,
-//       tags: conversation.resolvedTags.map(tag => tag.name), // Extract tag names
-//     }));
-
-//     res.status(200).json(enrichedConversations);
-//   } catch (err) {
-//     console.error('Error fetching conversations with tags:', err);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// });
 
 
 app.get('/:collection', async (req, res) => {
@@ -215,6 +232,7 @@ app.get('/whatsapp/chats', async (req, res) => {
   try {
     const chats = await whatsapp.getChats();
     res.status(200).json(chats);
+
   } catch (error) {
     console.error('Error fetching chats:', error);
     res.status(500).json({ error: 'Failed to fetch chats.' });
@@ -222,12 +240,16 @@ app.get('/whatsapp/chats', async (req, res) => {
 });
 
 app.get('/whatsapp/chats/:chatId/messages', async (req, res) => {
+  const userId = req.headers.authorization?.split("Bearer ")[1];
   const { chatId } = req.params;
   const { limit } = req.query;
   const messageLimit = parseInt(limit, 10) || 50;
 
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId parameter.' });
+  }
   try {
-    const messages = await whatsapp.getMessagesForChat(chatId, messageLimit);
+    const messages = await whatsapp.getMessagesForChat(chatId, userId, messageLimit);
     res.status(200).json(messages);
   } catch (error) {
     console.error(`Error fetching messages for chat ${chatId}:`, error);

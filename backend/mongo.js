@@ -17,18 +17,22 @@ const analyticsSchema = new mongoose.Schema({
 
 const broadcastSchema = new mongoose.Schema({
     message: { type: String, required: true },
-    recipients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Users' }],
+    recipients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'users' }],
     timestamp: { type: Date, default: Date.now },
 }, { timestamps: true });
 
 const conversationSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true }, // ✅ User ID
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'customer_profiles', required: true },
     messages: [{
         text: { type: String, required: true },
         timestamp: { type: Date, default: Date.now },
-        tag: { type: mongoose.Schema.Types.ObjectId, ref: 'Tags' },
+        classifications: [{ name: { type: String }, confidence: { type: Number } }], // ✅ Classification from Google NLP
     }],
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'CustomerProfiles', required: true },
 }, { timestamps: true });
+
+
+
 
 const customerInterestSchema = new mongoose.Schema({
     interests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tags' }],
@@ -37,8 +41,7 @@ const customerInterestSchema = new mongoose.Schema({
 
 const customerProfileSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    contact: { type: Number, required: true },
-    email: { type: String, required: true },
+    number: { type: String, required: true },
 }, { timestamps: true });
 
 const productSchema = new mongoose.Schema({

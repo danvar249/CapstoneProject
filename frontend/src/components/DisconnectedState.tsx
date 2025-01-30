@@ -34,9 +34,6 @@ const DisconnectedState: React.FC = () => {
       {!qrCode ? (
         <>
           <CircularProgress />
-          <Typography variant="h6" sx={{ marginTop: 2 }}>
-            Waiting for WhatsApp QR Code...
-          </Typography>
         </>
       ) : (
         <>

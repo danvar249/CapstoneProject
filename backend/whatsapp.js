@@ -1,5 +1,6 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-
+const { classifyText } = require('./textClassifier');
+const { Conversations } = require('./mongo'); // MongoDB model
 const fs = require('fs');
 
 let client = null; // WhatsApp client instance
@@ -20,6 +21,10 @@ const initializeClient = (io) => {
             console.log("✅ WhatsApp Client is Ready");
             latestQrCode = null; // Clear stored QR when connected
         });
+        // Handle client errors
+        client.on('error', (error) => {
+            console.error('An error occurred in WhatsApp client:', error);
+        });
         // Client disconnected
         client.on('disconnected', async (reason) => {
             console.log(`WhatsApp Disconnected. Reason: ${reason}`);
@@ -38,72 +43,6 @@ const initializeClient = (io) => {
     }
 };
 
-// Attach event handlers to the client
-// const attachEventHandlers = (client, io) => {
-//     // QR Code generation for login
-//     client.on('qr', (qr) => {
-//         console.log('New QR Code generated');
-//         latestQrCode = qr;
-//         emitQR(qr, io);
-//     });
-
-//     // Client is ready
-//     client.on('ready', () => {
-//         console.log('WhatsApp is ready');
-//         latestQrCode = null; // Clear QR on successful login
-//     });
-
-//     // Authentication successful
-//     client.on('authenticated', () => {
-//         console.log('WhatsApp client authenticated!');
-//     });
-
-//     client.on('change_state', (newState) => {
-//         console.log(`WhatsApp state changed: ${newState}`);
-//         io.emit('WA_ClientState', { clientState: newState });
-//         // If disconnected, re-send the latest QR
-//         if (newState === "UNPAIRED" || newState === "UNPAIRED_IDLE") {
-//             if (latestQrCode) {
-//                 emitQR(io, latestQrCode);
-//             }
-//         }
-//     });
-
-//     // Authentication failure
-//     client.on('auth_failure', (message) => {
-//         console.error('Authentication failed:', message);
-//     });
-
-//     // Client disconnected
-//     client.on('disconnected', async (reason) => {
-//         console.log(`WhatsApp Disconnected. Reason: ${reason}`);
-//         if (latestQrCode) {
-//             emitQR(io, latestQrCode); // Re-send QR code
-//         }
-//         if (reason === 'LOGOUT') {
-//             console.log('User logged out. Restarting client...');
-//             // await client.logout().catch(err => console.error('Error logging out:', err));
-//             client = null;
-//         } else {
-//             console.log('Restarting WhatsApp client...');
-//         }
-
-//         client.initialize();
-//     });
-
-
-//     // Handle incoming messages
-//     client.on('message', (message) => {
-//         console.log(`Message received from ${message.from}: ${message.body}`);
-//         io.emit('incomingMessage', message);
-//     });
-
-//     // Handle client errors
-//     client.on('error', (error) => {
-//         console.error('An error occurred in WhatsApp client:', error);
-//     });
-// };
-
 
 // Fetch all contacts
 const getAllContacts = async () => {
@@ -113,14 +52,13 @@ const getAllContacts = async () => {
             id: contact.id._serialized,
             name: contact.name || contact.pushname || contact.number,
             number: contact.number,
-            isBusiness: contact.isBusiness,
-            isMyContact: contact.isMyContact,
         }));
     } catch (error) {
         console.error('Error fetching contacts:', error);
         throw error;
     }
 };
+
 // Fetch all chats
 const getChats = async () => {
     try {
@@ -139,23 +77,31 @@ const getChats = async () => {
 };
 
 // Fetch messages for a specific chat
-const getMessagesForChat = async (chatId, limit = 50) => {
+const getMessagesForChat = async (chatId, userId, limit = 50) => {
     try {
+        // ✅ Find or create conversation
+        console.log(`🔍 Fetching messages for chatId: ${chatId}, userId:${userId}`);
+
         const chat = await client.getChatById(chatId);
+        if (!chat) throw new Error(`Chat ${chatId} not found`);
+
         const messages = await chat.fetchMessages({ limit });
-        return messages.map((msg) => ({
+        const formattedMessages = messages.map(msg => ({
             id: msg.id.id,
-            fromMe: msg.id.fromMe,
             from: msg.from,
-            body: msg.body,
+            body: msg.body.trim(),
             timestamp: msg.timestamp,
-            senderName: msg._data.notifyName || msg.from,
+            fromMe: msg.fromMe,
         }));
+        return formattedMessages;
+
     } catch (error) {
-        console.error(`Error fetching messages for chat ${chatId}:`, error);
+        console.error(`❌ Error fetching messages for chat ${chatId}:`, error);
         throw error;
     }
 };
+
+
 
 //Send message
 const sendMessage = async (phoneNumber, message) => {
@@ -225,7 +171,7 @@ module.exports = {
     sendMessage,
     getLatestQrCode,
     getClient,
-    getChats
+    getChats,
 };
 
 

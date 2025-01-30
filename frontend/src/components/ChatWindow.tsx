@@ -6,12 +6,24 @@ import {
     Button,
     List,
     ListItem,
-    Avatar,
     CircularProgress,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
 } from "@mui/material";
 import axios from "../utils/axios";
 import { addSocketListener, removeSocketListener } from "../utils/socket";
 import "./ChatWindow.css";
+
+const CLASSIFICATIONS = [
+    "All",
+    "Electronics",
+    "Appliances",
+    "Mobile Devices",
+    "Computers",
+    "Accessories",
+];
 
 const ChatWindow: React.FC = () => {
     // ✅ State Definitions
@@ -20,14 +32,47 @@ const ChatWindow: React.FC = () => {
     const [selectedChat, setSelectedChat] = useState<any>(null);
     const [messages, setMessages] = useState<any>([]);
     const [filteredMessages, setFilteredMessages] = useState<any>([]);
-    const [unreadMessages, setUnreadMessages] = useState<Record<string, any[]>>({});
     const [newMessage, setNewMessage] = useState<string>("");
     const [loadingChats, setLoadingChats] = useState<boolean>(true);
     const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
     const [chatSearchQuery, setChatSearchQuery] = useState<string>("");
     const [messageSearchQuery, setMessageSearchQuery] = useState<string>("");
+    const [selectedClassification, setSelectedClassification] = useState<string>("All");
+    const [userData, setUserData] = useState<any>(null);
+    const [customerExists, setCustomerExists] = useState<boolean | null>(null);
+    const [customerClassifications, setCustomerClassifications] = useState<string[]>([]);
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            console.log('userData', userData)
+
+            setUserData(JSON.parse(userData));
+        }
+
+        const handleIncomingMessage = (message: any) => {
+            console.log("📥 New Message Received:", message);
+            const chatId = message.from;
+            // TODO: check if message from customer, if so classify it and append to conversation in DB
+            if (selectedChat?.id === chatId) {
+                setMessages((prevMessages: any) => [...prevMessages, message]);
+                setFilteredMessages((prevMessages: any) => [...prevMessages, message]);
+            }
+
+        };
+
+        addSocketListener("incomingMessage", handleIncomingMessage);
+
+        return () => {
+            removeSocketListener("incomingMessage", handleIncomingMessage);
+        };
+    }, []);
+
+    useEffect(() => {
+        fetchMessagesForChat()
+    }, [selectedChat])
 
     // ✅ Fetch Chats from Server
     const fetchChats = async (): Promise<void> => {
@@ -44,62 +89,68 @@ const ChatWindow: React.FC = () => {
     };
 
     // ✅ Fetch Messages for Selected Chat
-    const fetchMessagesForChat = async (chatId: string): Promise<void> => {
+    const fetchMessagesForChat = async (): Promise<void> => {
+        if (!selectedChat)
+            return;
         setLoadingMessages(true);
+        setCustomerExists(null)
         try {
-            const response = await axios.get<any[]>(`/whatsapp/chats/${chatId}/messages`);
+            console.log('messages')
+            const userId = userData?.userId;
+
+            if (!userId) {
+                console.log('data: ', userData)
+                console.error('❌ User ID is missing from local storage.');
+                return;
+            }
+
+            const response = await axios.get(`/whatsapp/chats/${selectedChat.id}/messages`, {
+                headers: { Authorization: `Bearer ${userId}` },
+            });
             setMessages(response.data);
             setFilteredMessages(response.data);
+            const phoneNumber = selectedChat.id.split("@")[0];
 
-            // ✅ Mark messages as read when opening chat
-            setUnreadMessages((prevUnread) => {
-                const updatedUnread = { ...prevUnread };
-                delete updatedUnread[chatId];
-                return updatedUnread;
-            });
+            try {
+                const res = await axios.get(`/customer/${phoneNumber}`);
+                setCustomerExists(true);
+                console.log("✅ Customer Exists:", res.data);
+            } catch (error: any) {
+                if (error.response && error.response.data.error === "Customer not found") {
+                    setCustomerExists(false);
+                    console.log(" Customer doesn't exist")
+                }
+            }
 
-            // ✅ Scroll to bottom when messages load
             setTimeout(() => {
                 if (chatContainerRef.current) {
                     chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
                 }
             }, 0);
         } catch (error) {
-            console.error(`Error fetching messages for chat ${chatId}:`, error);
+            console.error(`Error fetching messages for chat ${selectedChat.id}:`, error);
         } finally {
             setLoadingMessages(false);
         }
     };
 
-    // ✅ Handle Incoming Messages from WebSocket
-    useEffect(() => {
-        const handleIncomingMessage = (message: any) => {
-            console.log("📥 New Message Received:", message);
-            const chatId = message.from;
+    // ✅ Register Customer
+    const handleRegisterCustomer = async () => {
+        if (!userData) return;
+        if (!selectedChat) return;
+        try {
+            const response = await axios.post("/addCustomer", {
+                userId: userData?.userId,
+                name: selectedChat.name || "Unknown",
+                number: selectedChat.id.split("@")[0],
+                messages: messages
+            });
 
-            if (selectedChat?.id === chatId) {
-                setMessages((prevMessages: any) => [...prevMessages, message]);
-                setFilteredMessages((prevMessages: any) => [...prevMessages, message]);
-            } else {
-                setUnreadMessages((prevUnread) => ({
-                    ...prevUnread,
-                    [chatId]: [...(prevUnread[chatId] || []), message],
-                }));
-            }
-        };
-
-        addSocketListener("incomingMessage", handleIncomingMessage);
-
-        return () => {
-            removeSocketListener("incomingMessage", handleIncomingMessage);
-        };
-    }, [selectedChat]);
-
-    // ✅ Handle Chat Selection
-    const handleChatClick = (chat: any) => {
-        setSelectedChat(chat);
-        fetchMessagesForChat(chat.id);
-        setMessageSearchQuery("");
+            console.log("✅ Customer Registered:", response.data);
+            setCustomerExists(true);
+        } catch (error) {
+            console.error("❌ Error registering customer:", error);
+        }
     };
 
     // ✅ Handle Message Sending
@@ -140,12 +191,13 @@ const ChatWindow: React.FC = () => {
 
     // ✅ Handle Message Search
     useEffect(() => {
-        setFilteredMessages(
-            messages.filter((message: { body: string; }) =>
-                message.body.toLowerCase().includes(messageSearchQuery.toLowerCase())
+        setFilteredChats(
+            chats.filter((chat: { name: string; classification?: string }) =>
+                chat.name.toLowerCase().includes(chatSearchQuery.toLowerCase()) &&
+                (selectedClassification === "All" || chat.classification === selectedClassification)
             )
         );
-    }, [messageSearchQuery, messages]);
+    }, [chatSearchQuery, chats, selectedClassification]);
 
     useEffect(() => {
         fetchChats();
@@ -158,13 +210,23 @@ const ChatWindow: React.FC = () => {
                 <Box className="chat-list-header">
                     <Typography variant="h6">Chats</Typography>
                     <TextField
+                        className="text"
                         fullWidth
                         placeholder="Search Chats..."
                         variant="outlined"
                         value={chatSearchQuery}
                         onChange={(e) => setChatSearchQuery(e.target.value)}
-                        sx={{ marginTop: 1, bgcolor: "white" }}
                     />
+                    <InputLabel>Filter by Classification</InputLabel>
+                    <Select fullWidth
+                        className="select"
+                        value={selectedClassification}
+                        onChange={(e) => setSelectedClassification(e.target.value)}
+                    >
+                        {CLASSIFICATIONS.map((category) => (
+                            <MenuItem key={category} value={category}>{category}</MenuItem>
+                        ))}
+                    </Select>
                 </Box>
 
                 {loadingChats ? (
@@ -176,9 +238,8 @@ const ChatWindow: React.FC = () => {
                         {filteredChats.map((chat: { id: React.Key | null | undefined; profilePicUrl: string | undefined; name: string | undefined; }) => (
                             <ListItem key={chat.id}
                                 component="button"
-                                onClick={() => handleChatClick(chat)}
+                                onClick={() => setSelectedChat(chat)}
                                 className={`chat-list-item ${selectedChat?.id === chat.id ? 'selected' : ''}`}>
-                                <Avatar src={chat.profilePicUrl} alt={chat.name} sx={{ marginRight: 2 }} />
                                 <Typography variant="body1" noWrap>
                                     {chat.name || chat.id}
                                 </Typography>
@@ -192,8 +253,27 @@ const ChatWindow: React.FC = () => {
             <Box className="chat-messages">
                 {selectedChat && (
                     <Box className="chat-header">
-                        <Avatar src={selectedChat.profilePicUrl} alt={selectedChat.name} className="chat-header-avatar" />
                         <Typography variant="h6">{selectedChat.name || selectedChat.id}</Typography>
+                        {customerExists ? (
+                            <div>
+                                <InputLabel>Classifications</InputLabel>
+                                <Select fullWidth
+                                    className="select"
+                                    value={selectedClassification}
+                                    onChange={(e) => setSelectedClassification(e.target.value)}
+                                >
+                                    {customerClassifications.map((category) => (
+                                        <MenuItem key={category} value={category}>{category}</MenuItem>
+                                    ))}
+                                </Select>
+                            </div>
+                        ) : customerExists === false && userData?.role === "manager" ?
+                            (
+                                <Button variant="contained" sx={{ marginLeft: "auto", bgcolor: "red" }} onClick={handleRegisterCustomer}>
+                                    Register Customer
+                                </Button>
+                            ) : <></>}
+
                     </Box>
                 )}
 
