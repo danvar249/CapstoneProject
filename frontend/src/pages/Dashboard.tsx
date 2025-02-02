@@ -1,17 +1,15 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Box, Button, CircularProgress } from "@mui/material";
-// import { WhatsappContext, WhatsappState } from "../context/WhatsappContext";
 import { addSocketListener, removeSocketListener, socket } from "../utils/socket";
 import DisconnectedState from "../components/DisconnectedState";
 import ChatWindow from "../components/ChatWindow";
 import axios from "../utils/axios";
+import whatsappInstance from "../utils/whatsapp"
+
 
 const Dashboard: React.FC = () => {
-  // const { clientState, setClientState } = useContext(WhatsappContext);
-  const [isLoading, setIsLoading] = useState(true); // New loading state
   const [isConnected, setIsConnected] = useState(false);
   const [clientState, setClientState] = useState<any>(null);
-
   // Check connection status with WhatsApp
   const checkConnection = async () => {
     try {
@@ -21,30 +19,15 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Error checking connection status:', error);
     }
-    setIsLoading(false); // Stop loading
-
   };
 
+
   useEffect(() => {
-    console.log("📡 Connecting to WhatsApp...");
-
-    const handleWhatsAppStateChange = (data: { clientState: any }) => {
-      console.log(`🔄 WhatsApp State Changed: ${data.clientState}`);
-      setClientState(data.clientState);
-
-      console.log(data.clientState)
-      setClientState(data.clientState);
-    };
-
-    // ✅ Attach socket listeners
-    addSocketListener("WA_ClientState", handleWhatsAppStateChange);
-    console.log("📡 Requesting initial WhatsApp state...");
-    socket.emit('whatsappClientState'); // ✅ Request initial state
-
-    return () => {
-      removeSocketListener("WA_ClientState", handleWhatsAppStateChange);
-    };
-  }, [setClientState]);
+    whatsappInstance.on("change_state", (newState: any) => {
+      console.log(`🔄 WhatsApp State Changed: ${newState}`);
+      setClientState(newState);
+    })
+  }, []);
 
   // useEffect(() => {
   //   if ("Notification" in window && Notification.permission !== "granted") {

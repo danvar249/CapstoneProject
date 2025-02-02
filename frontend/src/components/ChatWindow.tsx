@@ -15,6 +15,7 @@ import {
 import axios from "../utils/axios";
 import { addSocketListener, removeSocketListener } from "../utils/socket";
 import "./ChatWindow.css";
+import whatsappInstance from "../utils/whatsapp";
 
 const CLASSIFICATIONS = [
     "All",
@@ -48,7 +49,6 @@ const ChatWindow: React.FC = () => {
         const userData = localStorage.getItem('user');
         if (userData) {
             console.log('userData', userData)
-
             setUserData(JSON.parse(userData));
         }
 
@@ -74,13 +74,13 @@ const ChatWindow: React.FC = () => {
         fetchMessagesForChat()
     }, [selectedChat])
 
-    // ✅ Fetch Chats from Server
+    // ✅ Fetch Chats from whatsapp
     const fetchChats = async (): Promise<void> => {
         setLoadingChats(true);
         try {
-            const response = await axios.get<any[]>("/whatsapp/chats");
-            setChats(response.data);
-            setFilteredChats(response.data);
+            const chats = await whatsappInstance.getChats();
+            setChats(chats);
+            setFilteredChats(chats);
         } catch (error) {
             console.error("Error fetching chats:", error);
         } finally {
@@ -88,7 +88,8 @@ const ChatWindow: React.FC = () => {
         }
     };
 
-    // ✅ Fetch Messages for Selected Chat
+    // ✅ Fetch Messages for Selected Chat from whatsapp,
+    //    if chat is from customer we get the classifications from server.
     const fetchMessagesForChat = async (): Promise<void> => {
         if (!selectedChat)
             return;
@@ -104,12 +105,11 @@ const ChatWindow: React.FC = () => {
                 return;
             }
 
-            const response = await axios.get(`/whatsapp/chats/${selectedChat.id}/messages`, {
-                headers: { Authorization: `Bearer ${userId}` },
-            });
-            setMessages(response.data);
-            setFilteredMessages(response.data);
-            const phoneNumber = selectedChat.id.split("@")[0];
+            // const response = await axios.get(`/whatsapp/chats/${selectedChat.id}/messages`, {
+            //     headers: { Authorization: `Bearer ${userId}` },
+            // });
+
+            const phoneNumber = selectedChat.id._serialized.split("@")[0];
 
             try {
                 const res = await axios.get(`/customer/${phoneNumber}`);
@@ -121,7 +121,11 @@ const ChatWindow: React.FC = () => {
                     console.log(" Customer doesn't exist")
                 }
             }
+            const messages = await selectedChat.fetchMessages({ limit: 50 });
 
+            // TODO: fetch classifications for chat from server and add to messages
+            setMessages(messages);
+            setFilteredMessages(messages);
             setTimeout(() => {
                 if (chatContainerRef.current) {
                     chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -158,23 +162,20 @@ const ChatWindow: React.FC = () => {
         if (!selectedChat || !newMessage.trim()) return;
 
         try {
-            const response = await axios.post<{ success: boolean }>("/whatsapp/send-message", {
-                phoneNumber: selectedChat.id.split("@")[0],
-                message: newMessage,
-            });
+            const phoneNumber = selectedChat.id.split("@")[0]
+            await whatsappInstance.sendMessage(`${phoneNumber}@c.us`, newMessage);
 
-            if (response.data.success) {
-                const newMessageObj = {
-                    id: `temp-${Date.now()}`,
-                    from: 'me',
-                    body: newMessage,
-                    timestamp: new Date().toISOString(),
-                };
+            const newMessageObj = {
+                id: `temp-${Date.now()}`,
+                from: 'me',
+                body: newMessage,
+                timestamp: new Date().toISOString(),
+            };
 
-                setMessages((prevMessages: any) => [...prevMessages, newMessageObj]);
-                setFilteredMessages((prevMessages: any) => [...prevMessages, newMessageObj]);
-                setNewMessage("");
-            }
+            setMessages((prevMessages: any) => [...prevMessages, newMessageObj]);
+            setFilteredMessages((prevMessages: any) => [...prevMessages, newMessageObj]);
+            setNewMessage("");
+
         } catch (error) {
             console.error("Error sending WhatsApp message:", error);
         }

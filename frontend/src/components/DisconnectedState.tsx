@@ -1,24 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { addSocketListener, removeSocketListener, socket } from '../utils/socket';
 import { Box, Typography, CircularProgress } from '@mui/material';
+import whatsappInstance from '../utils/whatsapp';
 
 const DisconnectedState: React.FC = () => {
   const [qrCode, setQrCode] = useState<string | null>(null);
   useEffect(() => {
-    const handleQrCodeUpdate = (qrDataUri: string) => {
-      console.log('Received QR code');
-      setQrCode(qrDataUri);
-    };
-
-    // Subscribe to QR Code updates (No need to listen to `clientState` separately)
-    addSocketListener('qrCode', handleQrCodeUpdate);
-    // ✅ If no QR code exists, request the latest one
-    console.log("📡 Requesting latest QR code from server...");
-    socket.emit("requestLatestQr");
-    return () => {
-      removeSocketListener('qrCode', handleQrCodeUpdate);
-    };
+    whatsappInstance.on("qr", (qr: any) => {
+      setQrCode(qr);
+    })
   }, []);
+  // const handleQrCodeUpdate = (qrDataUri: string) => {
+  //   console.log('Received QR code');
+  //   setQrCode(qrDataUri);
+  // };
+
+  // // Subscribe to QR Code updates (No need to listen to `clientState` separately)
+  // addSocketListener('qrCode', handleQrCodeUpdate);
+  // // ✅ If no QR code exists, request the latest one
+  // console.log("📡 Requesting latest QR code from server...");
+  // socket.emit("requestLatestQr");
+  // return () => {
+  //   removeSocketListener('qrCode', handleQrCodeUpdate);
+  // };
+  // }, []);
 
 
   return (
