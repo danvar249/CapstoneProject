@@ -2,7 +2,6 @@ const { LanguageServiceClient } = require('@google-cloud/language');
 
 require('dotenv').config();
 
-const API_KEY = process.env.GOOGLE_CLOUD_API_KEY
 const client = new LanguageServiceClient();
 
 const classifyText = async (text) => {
