@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Container, Typography, TextField, Button, Alert, CircularProgress, Box } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from '../utils/axios';
-import { socket } from '../utils/socket';
 const logo = require("../logo.png");
 
 function Login() {
@@ -33,7 +32,6 @@ function Login() {
       setLoading(false);
     }
 
-    socket.emit("startWhatsApp");
     // Navigate to the dashboard
     navigate('/dashboard');
   };

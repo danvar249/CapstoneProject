@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Typography, TextField, Button, Box, Autocomplete } from "@mui/material";
 import axios from "../utils/axios"; // ✅ Ensure axios is configured with base API URL
+import { WhatsAppContext } from "../WhatsAppContext";
+import QRCodeDisplay from "../components/QRCodeDisplay";
 
 function BroadcastMessages() {
     // ✅ State for tags and customers
@@ -10,7 +12,14 @@ function BroadcastMessages() {
     const [filteredCustomers, setFilteredCustomers] = useState<{ id: string, name: string, number: string }[]>([]);
     const [selectedCustomers, setSelectedCustomers] = useState<{ id: string, name: string, number: string }[]>([]);
     const [message, setMessage] = useState("");
+    const [clientState, setClientState] = useState<string>("");
+    const context = useContext(WhatsAppContext)
 
+    useEffect(() => {
+        if (context?.state) {
+            setClientState(context.state)
+        }
+    }, [context?.state]);
     useEffect(() => {
         const fetchData = async () => {
             try {

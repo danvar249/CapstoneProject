@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useContext } from "react";
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { AppBar, Toolbar, Typography, Box, Snackbar, Alert, Button } from "@mui/material";
 import axios from "./utils/axios";
-import { socket } from "./utils/socket";
+import { WhatsAppContext } from "./WhatsAppContext";
+import QRCodeDisplay from "./components/QRCodeDisplay";
 const logo = require("./logo.png");
 
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { qrCode, state } = useContext(WhatsAppContext) || {};
 
   useEffect(() => {
     const userDataString = localStorage.getItem('user');
@@ -28,7 +30,7 @@ const App: React.FC = () => {
     try {
       axios.post('/logout')
     }
-    catch (error){
+    catch (error) {
 
     }
     navigate('/login');
@@ -43,8 +45,11 @@ const App: React.FC = () => {
             ShopLINK
           </Typography>
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Button color="inherit" component={Link} to="/">Home</Button>
+
             <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
             <Button color="inherit" component={Link} to="/broadcast">Broadcast</Button>
+
             <Button color="inherit" component={Link} to="/product-catalog">Product Catalog</Button>
             <Button color="inherit" component={Link} to="/analytics">Analytics</Button>
             <Button color="inherit" onClick={handleLogout}>Logout</Button>
@@ -79,9 +84,9 @@ const App: React.FC = () => {
             </Typography>
           </Box>
         )}
-        <Outlet />
+        {state !== "CONNECTED" && (location.pathname === "/dashboard" || location.pathname === "/broadcast") ? <QRCodeDisplay qrCode={qrCode || ""} clientState={state || ""} /> : <Outlet />}
       </Box>
-    </Box>
+    </Box >
   );
 }
 

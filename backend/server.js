@@ -53,19 +53,26 @@ let latestQrCode = null;
 io.on('connection', (socket) => {
   console.log('🔌 New client connected');
   if (!whatsapp.getClient())
-    whatsapp.initializeClient(socket);
+    whatsapp.initializeClient();
+  whatsapp.attachEvents(socket);
+  socket.on("whatsappClientState", async () => {
+    const client = await whatsapp.getClient();
+    let state = "LOADING";
+    try {
+      if (client) {
+        state = await client?.getState();
+        console.log('state: ', state);
+      }
+    } catch (error) {
+      console.log("Error emmitting: ", error)
+    }
+    socket.emit("WA_ClientState", state || "LOADING");
+  })
 
-
-  // socket.on("whatsappClientState", async () => {
-  //   const client = whatsapp.getClient();
-  //   console.log(client);
-  //   if (client) {
-  //     const state = await client.getState();
-  //     console.log(state);
-  //     socket.emit("WA_ClientState", state);
-  //   }
-  // })
-
+  socket.on("getQr", async () => {
+    const latestQr = whatsapp.getLatestQrCode();
+    socket.emit("qrCode", latestQr);
+  })
   // Upon connection, send a welcome message
   socket.emit('message', 'Welcome to ShopLINK!');
 
@@ -335,7 +342,7 @@ app.get('/whatsapp/chats/:chatId/messages', async (req, res) => {
 app.post('/whatsapp/send-message', async (req, res) => {
   const { phoneNumber, message } = req.body;
   try {
-    await whatsapp.sendMessage(`${phoneNumber}@c.us`, message);
+    await whatsapp.sendMessage(phoneNumber, message);
     res.status(200).json({ success: true, message: 'Message sent successfully!' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to send message.' });
@@ -355,10 +362,37 @@ app.post("/whatsapp/send-broadcast", async (req, res) => {
       await whatsapp.sendMessage(c.number, message);
 
     }
-
+    const broad = new Broadcasts({ message: message, recipients: { $each: customers.map((c) => c._id) } })
     res.status(200).json({ success: true, message: "Broadcast sent successfully!" });
   } catch (error) {
     res.status(500).json({ error: "Failed to send broadcast." });
+  }
+});
+app.post("/add-product", async (req, res) => {
+  try {
+    const { name, price, category, stock } = req.body;
+
+    if (!name || !price || !category) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const newProduct = new Products({ name, price, category, stock });
+    await newProduct.save();
+
+    res.status(201).json({ message: "Product created successfully", product: newProduct });
+  } catch (error) {
+    console.error("Error adding product:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/products", async (req, res) => {
+  try {
+    const products = await Product.find().populate("category", "name");
+    res.json(products);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

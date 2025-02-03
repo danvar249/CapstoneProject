@@ -8,55 +8,60 @@ let client = null; // WhatsApp client instance
 let latestQrCode = null; // Latest QR code generated
 
 // Initialize the WhatsApp client
-const initializeClient = (io) => {
+const initializeClient = () => {
     try {
         console.log('Initializing WhatsApp client...');
         client = new Client({
             authStrategy: new LocalAuth(),
         });
-        client.on("qr", async (qr) => {
-            console.log("📡 New QR Code received from WhatsApp");
-            try {
-                const qrUri = await qrcode.toDataURL(qr)
-                io.emit("qrCode", qrUri);
-            } catch (error) {
-                console.error("❌ Error generating QR code:", error);
-            }
-        });
-        client.on("ready", () => {
-            console.log("✅ WhatsApp Client is Ready");
-            io.emit('WA_ready');
-        });
-        client.on("message", (message) => {
-            console.log(`Message received from ${message.from}: ${message.body}`);
-            io.emit('incomingMessage', message);
-        });
-        client.on("change_state", (newState) => {
-            console.log(`📢 WhatsApp State Changed: ${newState}`);
-            io.emit("WA_ClientState", newState);
-        });
-        // Handle client errors
-        client.on('error', (error) => {
-            console.error('An error occurred in WhatsApp client:', error);
-        });
-        // Client disconnected
-        client.on('disconnected', async (reason) => {
-            console.log(`WhatsApp Disconnected. Reason: ${reason}`);
-            if (reason === 'LOGOUT') {
-                console.log('User logged out. Restarting client...');
-                // await client.logout().catch(err => console.error('Error logging out:', err));
-                client = null;
-            } else {
-                console.log('Restarting WhatsApp client...');
-            }
-        });
+
         client.initialize();
     } catch (err) {
         console.error('Error during client initialization:', err);
     }
 };
 
-
+const attachEvents = (io) => {
+    if (!client)
+        return;
+    client.on("qr", async (qr) => {
+        console.log("📡 New QR Code received from WhatsApp");
+        try {
+            const qrUri = await qrcode.toDataURL(qr)
+            latestQrCode = qrUri
+            io.emit("qrCode", qrUri);
+        } catch (error) {
+            console.error("❌ Error generating QR code:", error);
+        }
+    });
+    client.on("ready", () => {
+        console.log("✅ WhatsApp Client is Ready");
+        io.emit('WA_ready');
+    });
+    client.on("message", (message) => {
+        console.log(`Message received from ${message.from}: ${message.body}`);
+        io.emit('incomingMessage', message);
+    });
+    client.on("change_state", (newState) => {
+        console.log(`📢 WhatsApp State Changed: ${newState}`);
+        io.emit("WA_ClientState", newState);
+    });
+    // Handle client errors
+    client.on('error', (error) => {
+        console.error('An error occurred in WhatsApp client:', error);
+    });
+    // Client disconnected
+    client.on('disconnected', async (reason) => {
+        console.log(`WhatsApp Disconnected. Reason: ${reason}`);
+        if (reason === 'LOGOUT') {
+            console.log('User logged out. Restarting client...');
+            // await client.logout().catch(err => console.error('Error logging out:', err));
+            client = null;
+        } else {
+            console.log('Restarting WhatsApp client...');
+        }
+    });
+}
 // Fetch all contacts
 const getAllContacts = async () => {
     try {
@@ -79,7 +84,6 @@ const getChats = async () => {
         return chats.map((chat) => ({
             id: chat.id._serialized,
             name: chat.name || chat.id.user,
-            isGroup: chat.isGroup,
             lastMessage: chat.lastMessage?.body || null,
             unreadCount: chat.unreadCount || 0,
         }));
@@ -91,7 +95,7 @@ const getChats = async () => {
 
 // Fetch messages for a specific chat
 const getMessagesForChat = async (chatId, userId, limit = 50) => {
-    if(!client)
+    if (!client)
         return;
     try {
         // ✅ Find or create conversation
@@ -115,8 +119,6 @@ const getMessagesForChat = async (chatId, userId, limit = 50) => {
         throw error;
     }
 };
-
-
 
 //Send message
 const sendMessage = async (phoneNumber, message) => {
@@ -187,6 +189,7 @@ module.exports = {
     getLatestQrCode,
     getClient,
     getChats,
+    attachEvents
 };
 
 

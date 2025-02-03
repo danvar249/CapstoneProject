@@ -21,7 +21,6 @@ const analyticsSchema = new mongoose.Schema({
 const broadcastSchema = new mongoose.Schema({
     message: { type: String, required: true },
     recipients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'users' }],
-    timestamp: { type: Date, default: Date.now },
 }, { timestamps: true });
 
 const conversationSchema = new mongoose.Schema({

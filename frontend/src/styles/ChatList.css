@@ -1,0 +1,39 @@
+.chat-list {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #ddd;
+    background-color: #ffffff;
+    overflow-y: auto;
+  }
+  
+  /* Chat List Header */
+  .chat-list-header {
+    padding: 16px;
+    background-color: #128c7e; /* WhatsApp green */
+    color: #fff;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .chat-list-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f6f6f6; /* Light gray */
+  }
+  
+  .chat-list-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .chat-list-item:hover {
+    background-color: #e5e5e5; /* Hover effect */
+  }
+  
+  .chat-list-item.selected {
+    background-color: #dcf8c6; /* Selected chat background */
+  }
+  
