@@ -1,19 +1,42 @@
 import React, { useEffect, useState, useContext } from "react";
-import { Box, Button, CircularProgress } from "@mui/material";
-// import { WhatsappContext, WhatsappState } from "../context/WhatsappContext";
-import { addSocketListener, removeSocketListener, socket } from "../utils/socket";
-import DisconnectedState from "../components/DisconnectedState";
+import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import ChatWindow from "../components/ChatWindow";
 import axios from "../utils/axios";
+import { WhatsAppContext } from "../WhatsAppContext";
+import { addSocketListener, removeSocketListener, socket } from "../utils/socket";
 
 const Dashboard: React.FC = () => {
   // const { clientState, setClientState } = useContext(WhatsappContext);
   const [isLoading, setIsLoading] = useState(true); // New loading state
   const [isConnected, setIsConnected] = useState(false);
   const [clientState, setClientState] = useState<any>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const context = useContext(WhatsAppContext)
 
-  // Check connection status with WhatsApp
+  const handleWA_Ready = () => {
+    setIsConnected(true);
+    setIsLoading(false);
+  }
+  useEffect(() => {
+    addSocketListener("WA_ready", handleWA_Ready);
+    return () => {
+      removeSocketListener("WA_ready", handleWA_Ready);
+    }
+  }, [handleWA_Ready]);
+  useEffect(() => {
+    if (context?.qrCode) {
+      setQrCode(context.qrCode);
+    }
+  }, [context?.qrCode]);
+  useEffect(() => {
+    if (context?.state) {
+      console.log(context.state)
+      setIsConnected(context.state === "CONNECTED");
+    }
+  }, [context?.state]);
+
   const checkConnection = async () => {
+    setIsLoading(true);
     try {
       const response = await axios.get('/whatsapp/state');
       setIsConnected(response.data.clientState === "CONNECTED");
@@ -21,85 +44,11 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Error checking connection status:', error);
     }
-    setIsLoading(false); // Stop loading
-
+    setIsLoading(false)
   };
-
   useEffect(() => {
-    console.log("📡 Connecting to WhatsApp...");
-
-    const handleWhatsAppStateChange = (data: { clientState: any }) => {
-      console.log(`🔄 WhatsApp State Changed: ${data.clientState}`);
-      setClientState(data.clientState);
-
-      console.log(data.clientState)
-      setClientState(data.clientState);
-    };
-
-    // ✅ Attach socket listeners
-    addSocketListener("WA_ClientState", handleWhatsAppStateChange);
-    console.log("📡 Requesting initial WhatsApp state...");
-    socket.emit('whatsappClientState'); // ✅ Request initial state
-
-    return () => {
-      removeSocketListener("WA_ClientState", handleWhatsAppStateChange);
-    };
-  }, [setClientState]);
-
-  // useEffect(() => {
-  //   if ("Notification" in window && Notification.permission !== "granted") {
-  //     Notification.requestPermission();
-  //   }
-  // }, []);
-
-  // useEffect(() => {
-  //    // ✅ WebSocket Connected
-  //    socket.on('connect', () => {
-  //     console.log('✅ Connected to WebSocket');
-  //   });
-
-  //   // ✅ WebSocket Connection Error
-  //   socket.on('connect_error', (err) => {
-  //     console.error('❌ WebSocket Connection Error:', err);
-  //     setErrorMessage('WebSocket connection failed.');
-  //   });
-
-  //   // Listen for QR Code
-  //   socket.on('qrCode', (qr) => {
-  //     console.log('Received QR code from server');
-  //     setQrCode(qr);
-  //     setLoading(false);
-  //     setErrorMessage(null); // ✅ Clear error when a new QR is received
-  //   });
-
-  //   // 📢 Listen for WhatsApp State Changes
-  //   socket.on('WA_ClientState', (data) => {
-
-  //   });
-  //   //  Listen for Incoming Messages (Browser Notifications)
-  //   socket.on('incomingMessage', (message) => {
-  //     console.log('Incoming Message:', message);
-  //     // TODO: Handle classification of incoming messages and updating them in DB
-  //     // Show a browser notification
-  //     if (Notification.permission === "granted") {
-  //       new Notification("New WhatsApp Message", {
-  //         body: `${message.from}: ${message.body}`,
-  //         icon: "/whatsapp-icon.png"
-  //       });
-  //     }
-  //   });
-
-  //   return () => {
-  //     socket.off('connect');
-  //     socket.off('connect_error');
-  //     socket.off('qrCode');
-  //     socket.off('WA_ClientState');
-  //     socket.off('incomingMessage');
-  //   };
-  // }, []);
-
-  // 📢 Handle Manual WhatsApp Disconnect
-
+    checkConnection()
+  }, [])
 
   return (
     <div
@@ -112,9 +61,38 @@ const Dashboard: React.FC = () => {
         width: '70vw',
       }}
     >
-      {clientState === "CONNECTED" ? <ChatWindow /> : <DisconnectedState />}
+      {isConnected ? (
+        <ChatWindow />
+      ) : (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh',
+          }}
+        >
+          {!qrCode || isLoading ? (
+            <>
+              <CircularProgress />
+            </>
+          ) : (
+            <>
+              <Typography variant="h5" gutterBottom>
+                Scan QR Code to Connect
+              </Typography>
+              <img src={qrCode} alt="WhatsApp QR Code" style={{ width: '300px', height: '300px' }} />
+              <Typography variant="body1" color="textSecondary" sx={{ marginTop: 2 }}>
+                Open WhatsApp on your phone, go to Settings &gt; Linked Devices, and scan the QR code.
+              </Typography>
+            </>
+          )}
+        </Box>
+      )}
     </div>
   );
 }
 
 export default Dashboard;
+

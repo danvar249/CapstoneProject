@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 
-const SERVER_ADDRESS = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+const SERVER_ADDRESS = process.env.SERVER_URL || 'http://localhost:5000';
 
 // ✅ Initialize WebSocket connection
 const socket: Socket = io(SERVER_ADDRESS, {

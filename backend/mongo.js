@@ -7,6 +7,9 @@ mongoose.connect(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .catch(err => console.error('Error connecting to MongoDB:', err));
 
 // Define schemas
+const tagSchema = new mongoose.Schema({
+    name: { type: String, unique: true, required: true }
+}, { timestamps: true });
 
 const analyticsSchema = new mongoose.Schema({
     tags_sorted_by_engagement: [{
@@ -32,11 +35,9 @@ const conversationSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-
-
-const customerInterestSchema = new mongoose.Schema({
-    interests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tags' }],
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'CustomerProfiles', required: true },
+const customerInterestsSchema = new mongoose.Schema({
+    customer: { type: mongoose.Schema.Types.ObjectId, ref: "customer_profiles", required: true },
+    interests: [{ type: mongoose.Schema.Types.ObjectId, ref: "tags" }],
 }, { timestamps: true });
 
 const customerProfileSchema = new mongoose.Schema({
@@ -47,13 +48,10 @@ const customerProfileSchema = new mongoose.Schema({
 const productSchema = new mongoose.Schema({
     name: { type: String, required: true },
     price: { type: String, required: true },
-    category: { type: mongoose.Schema.Types.ObjectId, ref: 'Tags' },
+    category: { type: mongoose.Schema.Types.ObjectId, ref: 'tags' },
     stock: { type: Number, default: 0 },
 }, { timestamps: true });
 
-const tagSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-}, { timestamps: true });
 
 const userSchema = new mongoose.Schema({
     userName: { type: String, required: true, unique: true },
@@ -62,13 +60,13 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Create models
+const Tags = mongoose.model('tags', tagSchema);
 const Analytics = mongoose.model('analytics', analyticsSchema);
 const Broadcasts = mongoose.model('broadcasts', broadcastSchema);
 const Conversations = mongoose.model('conversations', conversationSchema);
-const CustomerInterests = mongoose.model('customer_interests', customerInterestSchema);
+const CustomerInterests = mongoose.model('customer_interests', customerInterestsSchema);
 const CustomerProfiles = mongoose.model('customer_profiles', customerProfileSchema);
 const Products = mongoose.model('products', productSchema);
-const Tags = mongoose.model('tags', tagSchema);
 const Users = mongoose.model('users', userSchema);
 const modelMapping = {
     tags: Tags,

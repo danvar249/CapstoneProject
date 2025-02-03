@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { AppBar, Toolbar, Typography, Box, Snackbar, Alert, Button } from "@mui/material";
+import axios from "./utils/axios";
+import { socket } from "./utils/socket";
 const logo = require("./logo.png");
 
 const App: React.FC = () => {
-  const [userData, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -12,7 +13,11 @@ const App: React.FC = () => {
     const userDataString = localStorage.getItem('user');
     const userData = userDataString ? JSON.parse(userDataString) : null;
     if (userData) {
-      setUser(userData);
+      axios.post('/restore-session', { userId: userData.userId }).catch(() => {
+        localStorage.removeItem("userId"); // Remove invalid session
+        navigate('/login');
+      });
+
     } else {
       navigate('/login');
     }
@@ -20,7 +25,12 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('user');
-    setUser(null);
+    try {
+      axios.post('/logout')
+    }
+    catch (error){
+
+    }
     navigate('/login');
   };
 
@@ -34,10 +44,9 @@ const App: React.FC = () => {
           </Typography>
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
             <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
-            <Button color="inherit" component={Link} to="/analytics">Analytics</Button>
-            <Button color="inherit" component={Link} to="/customer-management">Customer Management</Button>
-            <Button color="inherit" component={Link} to="/product-catalog">Product Catalog</Button>
             <Button color="inherit" component={Link} to="/broadcast">Broadcast</Button>
+            <Button color="inherit" component={Link} to="/product-catalog">Product Catalog</Button>
+            <Button color="inherit" component={Link} to="/analytics">Analytics</Button>
             <Button color="inherit" onClick={handleLogout}>Logout</Button>
           </Box>
         </Toolbar>

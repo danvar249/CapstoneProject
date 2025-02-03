@@ -1,6 +1,7 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const { classifyText } = require('./textClassifier');
 const { Conversations } = require('./mongo'); // MongoDB model
+const qrcode = require('qrcode');
 const fs = require('fs');
 
 let client = null; // WhatsApp client instance
@@ -13,13 +14,26 @@ const initializeClient = (io) => {
         client = new Client({
             authStrategy: new LocalAuth(),
         });
-        client.on("qr", (qr) => {
-            console.log("📌 New QR Code generated");
-            latestQrCode = qr; // Store latest QR but do NOT emit here
+        client.on("qr", async (qr) => {
+            console.log("📡 New QR Code received from WhatsApp");
+            try {
+                const qrUri = await qrcode.toDataURL(qr)
+                io.emit("qrCode", qrUri);
+            } catch (error) {
+                console.error("❌ Error generating QR code:", error);
+            }
         });
         client.on("ready", () => {
             console.log("✅ WhatsApp Client is Ready");
-            latestQrCode = null; // Clear stored QR when connected
+            io.emit('WA_ready');
+        });
+        client.on("message", (message) => {
+            console.log(`Message received from ${message.from}: ${message.body}`);
+            io.emit('incomingMessage', message);
+        });
+        client.on("change_state", (newState) => {
+            console.log(`📢 WhatsApp State Changed: ${newState}`);
+            io.emit("WA_ClientState", newState);
         });
         // Handle client errors
         client.on('error', (error) => {
@@ -35,7 +49,6 @@ const initializeClient = (io) => {
             } else {
                 console.log('Restarting WhatsApp client...');
             }
-            client.initialize();
         });
         client.initialize();
     } catch (err) {
@@ -78,6 +91,8 @@ const getChats = async () => {
 
 // Fetch messages for a specific chat
 const getMessagesForChat = async (chatId, userId, limit = 50) => {
+    if(!client)
+        return;
     try {
         // ✅ Find or create conversation
         console.log(`🔍 Fetching messages for chatId: ${chatId}, userId:${userId}`);
@@ -106,7 +121,7 @@ const getMessagesForChat = async (chatId, userId, limit = 50) => {
 //Send message
 const sendMessage = async (phoneNumber, message) => {
     try {
-        await whatsapp.client.sendMessage(`${phoneNumber}@c.us`, message);
+        await client.sendMessage(`${phoneNumber}@c.us`, message);
     } catch (error) {
         console.error('Error sending WhatsApp message:', error);
         throw error;

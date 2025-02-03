@@ -15,10 +15,10 @@ const classifyText = async (text) => {
         };
 
         const [classification] = await client.classifyText({ document, classificationModelOptions });
-        console.log(`Catagories for text ${text}:`)
-        classification.categories.forEach(category => {
-            console.log(`Name: ${category.name}, Confidence: ${category.confidence}`);
-        });
+        // console.log(`Catagories for text ${text}:`)
+        // classification.categories.forEach(category => {
+        //     console.log(`Name: ${category.name}, Confidence: ${category.confidence}`);
+        // });
 
         return classification;
     } catch (error) {

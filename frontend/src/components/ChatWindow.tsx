@@ -9,21 +9,17 @@ import {
     CircularProgress,
     Select,
     MenuItem,
-    FormControl,
     InputLabel,
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    ListItemText,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+
 import axios from "../utils/axios";
 import { addSocketListener, removeSocketListener } from "../utils/socket";
 import "./ChatWindow.css";
-
-const CLASSIFICATIONS = [
-    "All",
-    "Electronics",
-    "Appliances",
-    "Mobile Devices",
-    "Computers",
-    "Accessories",
-];
 
 const ChatWindow: React.FC = () => {
     // ✅ State Definitions
@@ -36,11 +32,12 @@ const ChatWindow: React.FC = () => {
     const [loadingChats, setLoadingChats] = useState<boolean>(true);
     const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
     const [chatSearchQuery, setChatSearchQuery] = useState<string>("");
-    const [messageSearchQuery, setMessageSearchQuery] = useState<string>("");
+    const [availableTags, setAvailableTags] = useState<string[]>([]);
     const [selectedClassification, setSelectedClassification] = useState<string>("All");
     const [userData, setUserData] = useState<any>(null);
     const [customerExists, setCustomerExists] = useState<boolean | null>(null);
     const [customerClassifications, setCustomerClassifications] = useState<string[]>([]);
+    const [expanded, setExpanded] = useState(false);
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -52,27 +49,53 @@ const ChatWindow: React.FC = () => {
             setUserData(JSON.parse(userData));
         }
 
-        const handleIncomingMessage = (message: any) => {
-            console.log("📥 New Message Received:", message);
-            const chatId = message.from;
-            // TODO: check if message from customer, if so classify it and append to conversation in DB
-            if (selectedChat?.id === chatId) {
-                setMessages((prevMessages: any) => [...prevMessages, message]);
-                setFilteredMessages((prevMessages: any) => [...prevMessages, message]);
-            }
 
+        const fetchTags = async () => {
+            try {
+                const response = await axios.get("/tags");
+                setAvailableTags(response.data.map((tag: { name: string }) => tag.name));
+            } catch (error) {
+                console.error("❌ Error fetching tags:", error);
+            }
         };
 
-        addSocketListener("incomingMessage", handleIncomingMessage);
+        fetchTags();
 
+
+    }, []);
+    const handleIncomingMessage = async (message: any) => {
+        console.log("📥 New Message Received:", message);
+        const chatId = message.from;
+        if (selectedChat?.id === chatId) {
+            setMessages((prevMessages: any) => [...prevMessages, message]);
+            setFilteredMessages((prevMessages: any) => [...prevMessages, message]);
+        }
+        try {
+            const phoneNumber = selectedChat.id.split("@")[0];
+
+            const res = await axios.get(`/customer/${phoneNumber}`);
+            if (res.status === 200) {
+                // if message from existing customer classify it.
+                axios.post("/classify", {
+                    phoneNumber: phoneNumber,
+                    messages: [message],
+                }).catch(() => { }); // ✅ Ignore errors (non-blocking)
+            }
+            console.log("📤 Sent message to /classify for processing.");
+        } catch (error) {
+            console.error("❌ Error sending message to /classify:", error);
+        }
+    };
+    useEffect(() => {
+        addSocketListener("incomingMessage", handleIncomingMessage);
         return () => {
             removeSocketListener("incomingMessage", handleIncomingMessage);
         };
-    }, []);
-
+    }, [])
     useEffect(() => {
         fetchMessagesForChat()
     }, [selectedChat])
+
 
     // ✅ Fetch Chats from Server
     const fetchChats = async (): Promise<void> => {
@@ -114,6 +137,8 @@ const ChatWindow: React.FC = () => {
             try {
                 const res = await axios.get(`/customer/${phoneNumber}`);
                 setCustomerExists(true);
+                setCustomerClassifications(res.data.interests);
+
                 console.log("✅ Customer Exists:", res.data);
             } catch (error: any) {
                 if (error.response && error.response.data.error === "Customer not found") {
@@ -139,15 +164,21 @@ const ChatWindow: React.FC = () => {
         if (!userData) return;
         if (!selectedChat) return;
         try {
+            const number = selectedChat.id.split("@")[0];
             const response = await axios.post("/addCustomer", {
-                userId: userData?.userId,
+                userId: userData.userId,
                 name: selectedChat.name || "Unknown",
-                number: selectedChat.id.split("@")[0],
-                messages: messages
+                number: number,
             });
 
             console.log("✅ Customer Registered:", response.data);
             setCustomerExists(true);
+            axios.post("/classify", {
+                userId: userData.userId,
+                phoneNumber: number,
+                messages: messages
+            }
+            ).catch(() => { });
         } catch (error) {
             console.error("❌ Error registering customer:", error);
         }
@@ -223,7 +254,8 @@ const ChatWindow: React.FC = () => {
                         value={selectedClassification}
                         onChange={(e) => setSelectedClassification(e.target.value)}
                     >
-                        {CLASSIFICATIONS.map((category) => (
+                        <MenuItem value="All">All</MenuItem>
+                        {availableTags.map((category) => (
                             <MenuItem key={category} value={category}>{category}</MenuItem>
                         ))}
                     </Select>
@@ -256,16 +288,24 @@ const ChatWindow: React.FC = () => {
                         <Typography variant="h6">{selectedChat.name || selectedChat.id}</Typography>
                         {customerExists ? (
                             <div>
-                                <InputLabel>Classifications</InputLabel>
-                                <Select fullWidth
-                                    className="select"
-                                    value={selectedClassification}
-                                    onChange={(e) => setSelectedClassification(e.target.value)}
-                                >
-                                    {customerClassifications.map((category) => (
-                                        <MenuItem key={category} value={category}>{category}</MenuItem>
-                                    ))}
-                                </Select>
+                                <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)}>
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                        <Typography variant="h6">Customer Interests</Typography>
+                                    </AccordionSummary>
+                                    <AccordionDetails>
+                                        {customerClassifications.length > 0 ? (
+                                            <List>
+                                                {customerClassifications.map((interest, index) => (
+                                                    <ListItem key={index}>
+                                                        <ListItemText primary={interest} />
+                                                    </ListItem>
+                                                ))}
+                                            </List>
+                                        ) : (
+                                            <Typography color="textSecondary">No interests assigned</Typography>
+                                        )}
+                                    </AccordionDetails>
+                                </Accordion>
                             </div>
                         ) : customerExists === false && userData?.role === "manager" ?
                             (

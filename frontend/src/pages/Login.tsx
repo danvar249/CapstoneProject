@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Container, Typography, TextField, Button, Alert, CircularProgress, Box } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from '../utils/axios';
-import logo from '../logo.png'; // Importing the logo
+import { socket } from '../utils/socket';
+const logo = require("../logo.png");
 
 function Login() {
   const [userName, setUserName] = useState('');
@@ -24,18 +25,21 @@ function Login() {
         role: response.data.role,
       }));
 
-      // Navigate to the dashboard
-      navigate('/dashboard');
-    } catch (err) {
+
+    } catch (err: any) {
       console.error('Login failed:', err);
       setError(err.response?.data?.error || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
+
+    socket.emit("startWhatsApp");
+    // Navigate to the dashboard
+    navigate('/dashboard');
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center', boxShadow: 3, borderRadius: 2, p: 3, bgcolor: 'background.paper', width: { xs: '90%', sm: '75%', md: '50%' }}}>
+    <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center', boxShadow: 3, borderRadius: 2, p: 3, bgcolor: 'background.paper', width: { xs: '90%', sm: '75%', md: '50%' } }}>
       <Box sx={{ mb: 3 }}>
         <img src={logo} alt="ShopLINK Logo" style={{ width: '100px', height: 'auto' }} />
       </Box>
