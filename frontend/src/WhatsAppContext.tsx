@@ -11,7 +11,7 @@ interface WhatsAppContextType {
 // ✅ Create Context
 export const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined);
 
-const SERVER_ADDRESS = process.env.SERVER_URL || 'http://localhost:5000';
+const SERVER_ADDRESS = process.env.SERVER_URL || 'http://localhost:5500';
 
 // ✅ Initialize WebSocket connection
 const socket: Socket = io(SERVER_ADDRESS, {
@@ -34,10 +34,13 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (clientState === "LOADING" && qrCode === null)
             socket.emit("getQr");
     }, []);
-    const handleReady = useCallback(() => {
-        console.log("📡 WhatsApp ready");
-        setState("CONNECTED");
+    const handleReady = useCallback((ready: string) => {
+        if (ready === "READY") {
+            console.log("📡 WhatsApp ready");
+            setState("CONNECTED");
+        }
     }, []);
+
     const handleIncomingMessage = useCallback(async (message: any) => {
         console.log("📥 New Message Received:", message);
 

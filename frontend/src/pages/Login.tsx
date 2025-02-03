@@ -23,17 +23,13 @@ function Login() {
         userName: response.data.userName,
         role: response.data.role,
       }));
-
-
+      navigate('/');
     } catch (err: any) {
       console.error('Login failed:', err);
       setError(err.response?.data?.error || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
-
-    // Navigate to the dashboard
-    navigate('/dashboard');
   };
 
   return (

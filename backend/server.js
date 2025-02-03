@@ -45,15 +45,11 @@ app.use(session({
   cookie: { secure: true } // Set `true` for HTTPS
 }));
 
-// ✅ Store latest QR code
-let latestQrCode = null;
 
 // ✅ WebSockets - Handle Real-time Events
 io.on('connection', (socket) => {
   console.log('🔌 New client connected');
-  if (!whatsapp.getClient())
-    whatsapp.initializeClient();
-  whatsapp.attachEvents(socket);
+  whatsapp.attachSocket(socket);
   socket.on("whatsappClientState", async () => {
     const client = await whatsapp.getClient();
     let state = "LOADING";
@@ -386,19 +382,6 @@ app.get('/whatsapp/contacts', async (req, res) => {
     console.error('Error fetching contacts:', error);
     res.status(500).json({ error: 'Failed to fetch contacts.' });
   }
-});
-
-app.post("/logout", (req, res) => {
-  req.session.destroy(err => {
-    if (err) return res.status(500).json({ error: "Failed to log out" });
-    res.json({ message: "Logged out successfully" });
-  });
-});
-
-
-// Endpoint to logout from WhatsApp
-app.post('/whatsapp/logout', async (req, res) => {
-  await whatsapp.logoutClient(req, res);
 });
 
 // Start the server

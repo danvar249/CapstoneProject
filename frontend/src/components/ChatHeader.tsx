@@ -1,4 +1,4 @@
-import { Box, Typography, Accordion, AccordionSummary, AccordionDetails, List, ListItem, ListItemText, Button } from "@mui/material";
+import { Box, Typography, Accordion, AccordionSummary, AccordionDetails, List, ListItem, ListItemText, Button, Grid } from "@mui/material";
 import React, { useState } from "react";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import "../styles/ChatHeader.css";
@@ -15,8 +15,14 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ chatName, customerExists, custo
     const [expanded, setExpanded] = useState(false);
 
     return <Box className="chat-header">
-        <Typography variant="h6">{chatName}</Typography>
-        {customerExists ? (
+        <Grid container spacing={3} sx={{ width: "100%" }}>
+            <Grid item xs={8} md={7}>
+
+                <Typography variant="h6">{chatName}</Typography>
+            </Grid>
+            {customerExists ? (
+                <Grid item xs={8} md={7}>
+
             <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Typography variant="h6">Customer Interests</Typography>
@@ -34,13 +40,18 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ chatName, customerExists, custo
                         <Typography color="textSecondary">No interests assigned</Typography>
                     )}
                 </AccordionDetails>
-            </Accordion>
+                    </Accordion>
+                </Grid>
         ) : role === "manager" ?
-            (
+                    (
+                        <Grid item xs={8} md={7}>
+
                 <Button variant="contained" sx={{ marginLeft: "auto", bgcolor: "red" }} onClick={handleRegisterCustomer}>
                     Register Customer
-                </Button>
-            ) : <></>}
+                            </Button>
+                        </Grid>
+                ) : <></>}
+        </Grid>
 
     </Box>;
 }

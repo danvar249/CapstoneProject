@@ -33,6 +33,7 @@ const ChatWindow: React.FC = () => {
         const fetchChats = async () => {
             try {
                 setLoadingChats(true);
+                console.log("fetching chats")
                 const response = await axios.get("/whatsapp/chats");
                 setChats(response.data);
             } catch (error) {
@@ -167,6 +168,7 @@ const ChatWindow: React.FC = () => {
         }
     }, [selectedChat]);
 
+
     return (
         <Box className="chat-window">
             {/* 🔹 Sidebar (Chat List) */}
@@ -182,6 +184,7 @@ const ChatWindow: React.FC = () => {
                 {/* 🔹 Chat Header */}
                 {selectedChat && <ChatHeader chatName={selectedChat.name || selectedChat.id} customerExists={customerExists} customerClassifications={customerClassifications} role={userData?.role || ""}
                     handleRegisterCustomer={handleRegisterCustomer} />}
+
 
                 {/* 🔹 Chat Messages */}
                 {selectedChat && <ChatMessages messages={messages} />}

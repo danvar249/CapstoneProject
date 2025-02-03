@@ -21,23 +21,19 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('user');
-    try {
-      axios.post('/logout')
-    }
-    catch (error) {
-
-    }
     navigate('/login');
   };
 
   return (
     <Box>
       <AppBar position="fixed" sx={{ bgcolor: 'green' }}>
+
         <Toolbar>
           <Box component="img" src={logo} alt="ShopLINK Logo" sx={{ width: 40, height: 40, mr: 2 }} />
           <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 'bold', color: 'white' }}>
             ShopLINK
           </Typography>
+
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
             <Button color="inherit" component={Link} to="/">Home</Button>
 
@@ -47,6 +43,7 @@ const App: React.FC = () => {
             <Button color="inherit" component={Link} to="/product-catalog">Product Catalog</Button>
             <Button color="inherit" component={Link} to="/analytics">Analytics</Button>
             <Button color="inherit" onClick={handleLogout}>Logout</Button>
+
           </Box>
         </Toolbar>
       </AppBar>
@@ -68,8 +65,9 @@ const App: React.FC = () => {
             <img
               src={logo}
               alt="ShopLINK Logo"
-              style={{ width: '512px', height: '512px', marginBottom: '16px' }}
+              style={{ width: '256px', height: '256px', marginBottom: '16px' }}
             />
+
             <Typography variant="h3" sx={{ fontWeight: 'bold', color: 'green' }}>
               Welcome to ShopLINK
             </Typography>
@@ -80,6 +78,7 @@ const App: React.FC = () => {
         )}
         {state !== "CONNECTED" && (location.pathname === "/dashboard" || location.pathname === "/broadcast") ? <QRCodeDisplay qrCode={qrCode || ""} clientState={state || ""} /> : <Outlet />}
       </Box>
+
     </Box >
   );
 }
