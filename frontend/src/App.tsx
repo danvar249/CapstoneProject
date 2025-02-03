@@ -14,13 +14,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const userDataString = localStorage.getItem('user');
     const userData = userDataString ? JSON.parse(userDataString) : null;
-    if (userData) {
-      axios.post('/restore-session', { userId: userData.userId }).catch(() => {
-        localStorage.removeItem("userId"); // Remove invalid session
-        navigate('/login');
-      });
-
-    } else {
+    if (!userData) {
       navigate('/login');
     }
   }, [navigate]);

@@ -37,7 +37,6 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
-// app.use(express.static(path.join(__dirname, 'public')))
 // ✅ Session Middleware (Stores session using `userId`)
 app.use(session({
   secret: "superSecretKey",
@@ -113,24 +112,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// ✅ Recreate Session from `localStorage` User ID
-app.post("/restore-session", (req, res) => {
-  const { userId } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ error: "User ID is required" });
-  }
-
-  // ✅ Check if the user exists (Replace with a real DB query)
-  const userExists = Users.findById(userId);
-  if (!userExists) {
-    return res.status(401).json({ error: "Invalid user ID" });
-  }
-
-  // ✅ Reassign session
-  req.session.userId = userId;
-  res.json({ message: "Session restored", userId });
-});
 
 app.post('/classify', async (req, res) => {
   const { userId, phoneNumber, messages } = req.body;
